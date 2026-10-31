@@ -38,7 +38,7 @@ export function introAt(g: Game, t: number): void {
 export function applyScene(g: Game, name: string, arg?: string, arg2?: string): void {
   g.frozen = false;
   const inp = emptyInput(); inp.pointer.inside = true; g.input = inp;
-  if (name === "title") { g.phase = "title"; g.frozen = true; return; }
+  if (name === "title") { inp.pointer.inside = false; g.phase = "title"; g.frozen = true; return; }
   if (name === "intro") { introAt(g, parseFloat(arg ?? "0")); return; }
   g.newGame(false); g.phase = "play"; g.drain();
   const R = () => g.run;

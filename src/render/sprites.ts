@@ -6,15 +6,15 @@ const CYs = "0,229,255", GDs = "255,200,0", PKs = "255,60,220";
 
 /**
  * A battery wing: a slanted panel with cell lines. `fill` is the gold fill alpha (0 for none); `ghost` draws a dashed pink
- * outline instead of the cyan one (a wing that is missing). Reads d.clockT for the ghost's pulse.
+ * outline instead of the cyan one (a wing that is missing). The ghost pulses with d.clockT unless `steady`.
  */
-export function wingIcon(d: Draw, x: number, y: number, s: number, fill: number, ghost: boolean, rot?: number): void {
+export function wingIcon(d: Draw, x: number, y: number, s: number, fill: number, ghost: boolean, rot?: number, steady = false): void {
   const ctx = d.ctx;
   ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.scale(s, s);
   const P = [[-70, -14], [70, -40], [70, -8], [-70, 32]];
   ctx.beginPath(); P.forEach((p, i) => { if (i) ctx.lineTo(p[0], p[1]); else ctx.moveTo(p[0], p[1]); }); ctx.closePath();
   if (fill > 0) { ctx.fillStyle = `rgba(${GDs},${fill})`; ctx.fill(); }
-  ctx.lineWidth = 2.5 / s; ctx.strokeStyle = `rgba(${ghost ? PKs : CYs},${ghost ? 0.5 + 0.4 * Math.sin(d.clockT * 5) : 1})`;
+  ctx.lineWidth = 2.5 / s; ctx.strokeStyle = `rgba(${ghost ? PKs : CYs},${ghost ? (steady ? 0.7 : 0.5 + 0.4 * Math.sin(d.clockT * 5)) : 1})`;
   if (ghost) ctx.setLineDash([8 / s, 6 / s]);
   ctx.stroke(); ctx.setLineDash([]);
   ctx.beginPath();

@@ -7,6 +7,8 @@ export const W = 640;
 export const FOV = 30;
 export const PPD = W / FOV;
 export const CENTER = W / 2;
+/** The widest screen the game adapts to (width / height); wider canvases get empty black at the sides. */
+export const MAX_ASPECT = 2.4;
 
 export const CYAN: RGB = [0, 229, 255];
 export const GOLD: RGB = [255, 200, 0];

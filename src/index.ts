@@ -65,7 +65,7 @@ export class OverBlaster {
       this.root = target; this.ownsCanvas = true;
       this.canvas = document.createElement("canvas");
       this.canvas.setAttribute("aria-label", "OverBlaster game screen");
-      Object.assign(this.canvas.style, { display: "block", width: "100%", aspectRatio: "1 / 1", background: "#000", touchAction: "none" });
+      Object.assign(this.canvas.style, { display: "block", width: "100%", height: "100%", background: "#000", touchAction: "none" });
       target.appendChild(this.canvas);
     }
     this.game = new Game(opts);
@@ -89,6 +89,7 @@ export class OverBlaster {
     this.raf = requestAnimationFrame((t) => this.frame(t));
     const dt = Math.min(0.05, (now - this.last) / 1000 || 0.016);
     this.last = now;
+    this.game.setAspect(this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight));
     if (this.running) {
       this.mic.update(dt, !!this.audio?.isSpeaking());
       this.input.micFire = this.mic.held;

@@ -37,7 +37,7 @@ is that port: it implements the same rules over positioned image widgets.
 Each `render/*.ts` function is `(Draw, Game) -> void`, reading `game.run`, `game.intro`, `game.view`, `game.clock`. `Draw` wraps 12 primitives
 (text with letter spacing, polygon fill/stroke, glow, rounded rect, logo, crosshair, stars, the rock). Port `Draw` to your 2D API, then each scene
 is a mechanical translation. Visual reference: run the demo (`npm run dev`) and use the debug scenes: `#test=title`, `#test=intro:5`,
-`#test=wing:hold`, `#test=plate`, `#test=gauge`, ... (list in `src/debug/scenes.ts`), which freeze a game on one moment for side-by-side comparison.
+`#test=wing:hold&freeze`, `#test=plate&freeze`, `#test=gauge`, ... (list in `src/debug/scenes.ts`), which freeze a game on one moment for side-by-side comparison.
 
 ## Keep these invariants
 

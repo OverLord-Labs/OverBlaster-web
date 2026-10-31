@@ -69,6 +69,7 @@ export class View {
 }
 const FOV_DEG = 30;
 
-export function onScreen(p: { x: number; y: number }, margin: number): boolean {
-  return p.x > -margin && p.x < W + margin && p.y > -margin && p.y < W + margin;
+/** Is a screen point inside the visible area? `ox` is the extra width on each side when the screen is wider than the 640 px square. */
+export function onScreen(p: { x: number; y: number }, margin: number, ox = 0): boolean {
+  return p.x > -ox - margin && p.x < W + ox + margin && p.y > -margin && p.y < W + margin;
 }

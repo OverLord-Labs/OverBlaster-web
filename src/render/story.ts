@@ -22,21 +22,6 @@ const DEBRIS: Debris[] = [];
   for (let i = 0; i < 30; i++) { const dur = 0.4 + r.next() * 0.3; DEBRIS.push({ a: r.next() * 6.283, d: r.next() * (1 - dur), dur, rot: r.next() * 6, sz: 60 + r.next() * 90 }); }
 }
 
-/** The "way back" map: the hazard route from the Meridian up through the belt. `p` is how much of the route is drawn. */
-function hazardRoute(d: Draw, t: number, x0: number, y0: number, x1: number, y1: number, seed: number, p: number): void {
-  const ctx = d.ctx, r = srng(seed || 23);
-  for (let i = 0; i < 16; i++) {
-    const u = r();
-    let px = lerp(x0, x1, u) + (r() - 0.5) * 360;
-    const py = lerp(y0, y1, u) + (r() - 0.5) * 60;
-    if (Math.abs(px - lerp(x0, x1, u) - Math.sin(u * 9) * 60) < 50) px += 110;
-    ctx.save(); ctx.globalAlpha *= 0.75; d.drawRock(clamp(px, 40, 600), py, 14 + r() * 22, r() * 6 + t * 0.1, PINK, false, false, false); ctx.restore();
-  }
-  ctx.save(); ctx.strokeStyle = `rgba(${CYs},.7)`; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.lineDashOffset = -t * 30; ctx.beginPath();
-  for (let k = 0; k <= 30 * p; k++) { const f = k / 30, x = lerp(x0, x1, f) + Math.sin(f * 9) * 60, y = lerp(y0, y1, f); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
-  ctx.stroke(); ctx.restore();
-}
-
 // the bridge: the big front window and the two side panes (where the wings are)
 const WIN: Pt[][] = [[[140, 100], [500, 100], [538, 372], [102, 372]], [[0, 128], [92, 156], [86, 366], [0, 396]], [[640, 128], [548, 156], [554, 366], [640, 396]]];
 
@@ -226,20 +211,19 @@ function bridge(d: Draw, T: number): void {
   const gone1 = T >= EV.w1, gone2 = T >= EV.w2;
   wingIcon(d, 76, 566, 0.4, gone1 ? 0 : 0.85, gone1, -0.15); wingIcon(d, 564, 566, 0.4, gone2 ? 0 : 0.85, gone2, 0.15);
   d.text("WING 1", 76, 604, 12, `rgb(${gone1 ? PKs : CYs})`, 700, 4, "center"); d.text("WING 2", 564, 604, 12, `rgb(${gone2 ? PKs : CYs})`, 700, 4, "center");
-  d.text("EARTH GRID  3 %", 320, 622, 12, `rgba(${PKs},.8)`, 600, 4, "center");
-  d.text(dead ? "JUMP  OFFLINE" : inst > 0.05 ? "JUMP  UNSTABLE" : "JUMP  ACTIVE", 320, 640, 12, `rgb(${dead || inst > 0.05 ? PKs : CYs})`, 700, 4, "center");
   ctx.restore();
   /* banners and flashes */
   const bl = Math.floor(T * 5) % 2 ? 0.45 : 1;
   let msg = "";
-  if (T >= s1 && T < EV.w1) msg = "JUMP  UNSTABLE";
-  else if (T >= EV.w1 && T < EV.w1 + 1.3) msg = "WING 1  LOST";
+  if (T >= EV.w1 && T < EV.w1 + 1.3) msg = "WING 1  LOST";
   else if (T >= EV.w2 && T < EV.w2 + 1.3) msg = "WING 2  LOST";
   else if (T >= EV.w1 + 1.3 && T < EV.drop) msg = "POWER  FAILURE";
   if (msg && !dead) {
     const ba = ramp(T, s1, s1 + 0.3) * (1 - drop);
-    ctx.save(); ctx.globalAlpha = ba; ctx.fillStyle = "rgba(20,0,6,.72)"; ctx.fillRect(150, 182, 340, 54); ctx.strokeStyle = `rgba(255,70,90,${bl})`; ctx.lineWidth = 3; ctx.strokeRect(150, 182, 340, 54); ctx.restore();
-    d.text(msg, 320, 220, 34, "#fff", 800, 8, "center", bl * ba);
+    let bsz = 34; while (bsz > 18 && d.textW(msg, bsz, 800, 8) > 500) bsz -= 1; // the frame is as wide as its message (up to 560 px)
+    const fw = Math.max(340, d.textW(msg, bsz, 800, 8) + 48);
+    ctx.save(); ctx.globalAlpha = ba; ctx.fillStyle = "rgba(20,0,6,.72)"; ctx.fillRect(320 - fw / 2, 182, fw, 54); ctx.strokeStyle = `rgba(255,70,90,${bl})`; ctx.lineWidth = 3; ctx.strokeRect(320 - fw / 2, 182, fw, 54); ctx.restore();
+    d.text(msg, 320, 220, bsz, "#fff", 800, 8, "center", bl * ba);
   }
   if (alarm > 0.05 && !dead) {
     const g = ctx.createRadialGradient(320, 320, 150, 320, 320, 470);
@@ -258,6 +242,24 @@ function bridge(d: Draw, T: number): void {
   }
 }
 
+// scenes that carry on from the one before, with no fade between
+const SCN_CONT = [0, 1, 1, 1, 1, 0, 1];
+
+/** The "way back" map: the hazard route from the Meridian up through the belt. `p` is how much of the route is drawn. */
+function hazardRoute(d: Draw, t: number, x0: number, y0: number, x1: number, y1: number, seed: number, p: number): void {
+  const ctx = d.ctx, r = srng(seed || 23);
+  for (let i = 0; i < 16; i++) {
+    const u = r();
+    let px = lerp(x0, x1, u) + (r() - 0.5) * 360;
+    const py = lerp(y0, y1, u) + (r() - 0.5) * 60;
+    if (Math.abs(px - lerp(x0, x1, u) - Math.sin(u * 9) * 60) < 50) px += 110;
+    ctx.save(); ctx.globalAlpha *= 0.75; d.drawRock(clamp(px, 40, 600), py, 14 + r() * 22, r() * 6 + t * 0.1, PINK, false, false, false); ctx.restore();
+  }
+  ctx.save(); ctx.strokeStyle = `rgba(${CYs},.7)`; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.lineDashOffset = -t * 30; ctx.beginPath();
+  for (let k = 0; k <= 30 * p; k++) { const f = k / 30, x = lerp(x0, x1, f) + Math.sin(f * 9) * 60, y = lerp(y0, y1, f); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  ctx.stroke(); ctx.restore();
+}
+
 /** The route hologram: the Meridian at the bottom, the way through the belt, and the two wing blips (alpha a1, a2). `nh` fades "NO HYPERSPACE". */
 function mapDraw(d: Draw, t: number, rp: number, a1: number, a2: number, nh: number): void {
   const ctx = d.ctx;
@@ -272,9 +274,6 @@ function mapDraw(d: Draw, t: number, rp: number, a1: number, a2: number, nh: num
   });
   d.text("NO HYPERSPACE", 320, 30, 16, `rgb(${PKs})`, 700, 8, "center", nh);
 }
-
-// scenes that carry on from the one before, with no fade between
-const SCN_CONT = [0, 1, 1, 1, 1, 0, 1];
 
 /** The story at intro time t: the bridge for the first five lines, then the route hologram for the last two. */
 export function drawStory(d: Draw, t: number): void {
@@ -314,8 +313,7 @@ export function drawIntro(d: Draw, game: Game, drawPlayfield: (d: Draw, game: Ga
     d.drawStars(t, 4 + 40 * warp, 0, 0.9 * calm);
     const u = t - COUNT_AT;
     if (u < 3) { // the way back behind the numbers: wing 1, wing 2, then the rocks begin to stream at you
-      ctx.save(); ctx.globalAlpha *= 0.55; mapDraw(d, u + 60, 1, u > 0.3 ? 1 : 0, u > 1.3 ? 1 : 0, 1); ctx.restore();
-      if (u > 2) {
+            if (u > 2) {
         const q = ramp(u, 2, 3), sr = srng(55);
         for (let ri = 0; ri < 9; ri++) {
           const an = (ri / 9) * 6.283 + sr(), dd = 60 + 300 * ease(q) * (0.5 + sr());
@@ -351,7 +349,7 @@ export function drawIntro(d: Draw, game: Game, drawPlayfield: (d: Draw, game: Ga
     });
   }
   const fl = 0.95 * ramp(t, 13.9 + SH, 14.3 + SH) * (1 - ramp(t, 14.3 + SH, 15.0 + SH));
-  if (fl > 0) { ctx.fillStyle = `rgba(255,255,255,${fl})`; ctx.fillRect(0, 0, W, W); }
+  if (fl > 0) { ctx.fillStyle = `rgba(255,255,255,${fl})`; ctx.fillRect(-game.ox, 0, W + 2 * game.ox, W); } // the flash covers the whole screen, bars or not
   // the narrator's captions: at the top over the bridge, at the bottom over the map
   INTRO_LINES.forEach((l, k) => {
     if (t >= l[0] && t < l[1]) {
@@ -365,9 +363,9 @@ export function drawIntro(d: Draw, game: Game, drawPlayfield: (d: Draw, game: Ga
     const a = ramp(t, 0.9, 1.5) * (1 - ramp(t, COUNT_AT - 2.6, COUNT_AT - 1.6)), b = SKIPS, pt = game.input.pointer, hov = inBox(b, pt.x, pt.y);
     ctx.save(); ctx.globalAlpha *= a;
     d.fillPoly(d.cutPlate(b.x, b.y, b.x + b.w, b.y + b.h, 9), hov ? "rgba(0,229,255,.22)" : "rgba(0,0,0,.55)", css(CYAN, hov ? 1 : 0.7), 1.5);
-    d.text("SKIP STORY", b.x + 48, b.y + 20, 13, hov ? "#fff" : CYAN, 700, 3, "center");
-    d.fillPoly([[b.x + 112, b.y + 9], [b.x + 124, b.y + 15], [b.x + 112, b.y + 21]], css(CYAN, hov ? 1 : 0.8), null);
-    d.fillPoly([[b.x + 124, b.y + 9], [b.x + 136, b.y + 15], [b.x + 124, b.y + 21]], css(CYAN, hov ? 1 : 0.8), null);
+    d.text("SKIP STORY", b.x + 66, b.y + 20, 13, hov ? "#fff" : CYAN, 700, 3, "center");
+    d.fillPoly([[b.x + 136, b.y + 9], [b.x + 148, b.y + 15], [b.x + 136, b.y + 21]], css(CYAN, hov ? 1 : 0.8), null);
+    d.fillPoly([[b.x + 148, b.y + 9], [b.x + 160, b.y + 15], [b.x + 148, b.y + 21]], css(CYAN, hov ? 1 : 0.8), null);
     ctx.restore();
   }
 }

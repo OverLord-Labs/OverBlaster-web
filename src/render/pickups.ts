@@ -4,6 +4,7 @@ import type { Game } from "../core/game";
 import { clamp, ease, ramp } from "../core/math";
 import type { Gauge } from "../core/types";
 import { onScreen } from "../core/view";
+const visible = (game: { ox: number }, p: { x: number; y: number }, m: number): boolean => onScreen(p, m, game.ox);
 import { drawPointer } from "./arrows";
 import { css, Draw, mixc } from "./draw";
 
@@ -45,7 +46,7 @@ export function drawBadChip(d: Draw, clock: number, x: number, y: number, size: 
 
 export function drawGauge(d: Draw, game: Game, q: Gauge): void {
   const ctx = d.ctx, clock = game.clock, p = game.proj(q.az, q.el);
-  if (!onScreen(p, 60)) { drawPointer(d, game, q.az, q.el, BAD[q.color].col, 40); return; }
+  if (!visible(game, p, 60)) { drawPointer(d, game, q.az, q.el, BAD[q.color].col, 40); return; }
   const col = BAD[q.color].col, fade = q.age > GAUGE_LIFE - 2 && !q.first ? (Math.sin(clock * 18) > 0 ? 1 : 0.25) : 1, pop = ease(ramp(q.age, 0, 0.25)), prog = clamp(q.dwell / q.hold, 0, 1);
   ctx.save(); ctx.globalAlpha = fade; ctx.translate(p.x, p.y); ctx.scale(pop, pop); ctx.translate(-p.x, -p.y);
   ctx.save(); ctx.setLineDash([7, 7]); ctx.lineDashOffset = -clock * 30; ctx.strokeStyle = css(col, 0.55 + 0.3 * Math.sin(clock * 8)); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, 62, 0, 7); ctx.stroke(); ctx.restore(); // a warning ring: stay out of it

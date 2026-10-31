@@ -85,8 +85,9 @@ export class InputController {
   }
 
   private toGame(e: PointerEvent): { x: number; y: number } {
-    const r = this.canvas.getBoundingClientRect();
-    return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * W };
+    // game space: the 640 px square is centred; a wider canvas has `ox` more on each side (so x can be negative or past 640)
+    const r = this.canvas.getBoundingClientRect(), lw = (W * r.width) / r.height;
+    return { x: ((e.clientX - r.left) / r.width) * lw - (lw - W) / 2, y: ((e.clientY - r.top) / r.height) * W };
   }
 
   /** iOS needs a user gesture to allow motion sensors. Call from a click handler. */

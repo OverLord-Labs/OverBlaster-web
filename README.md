@@ -7,6 +7,13 @@ battery wings are out there too, at levels 14 and 28.
 
 TypeScript, no runtime dependencies, Canvas 2D + WebAudio. This is the web sibling of the Python app in `../Raven`.
 
+| | |
+|---|---|
+| ![Title screen](docs/screenshots/title.png) | ![The Meridian's bridge in the story intro](docs/screenshots/bridge.png) |
+| *Title. The glasses' square view sits in the middle of a wider window.* | *The story intro on the stranded Meridian's bridge: the jump goes unstable and the wings tear away.* |
+| ![Firing at rubble](docs/screenshots/laser.png) | ![Holding aim on a lost battery wing](docs/screenshots/wing.png) |
+| *Gameplay fills the browser width. The crosshair follows the mouse; a held click or Space is "Pew".* | *Level 14: hold your aim on the Meridian's battery wing for 2.4 s. The two wing icons beside the level are the ones still missing.* |
+
 ## Run it
 
 ```bash

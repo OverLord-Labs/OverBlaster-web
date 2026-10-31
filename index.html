@@ -6,42 +6,25 @@
 <title>OverBlaster</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap">
 <style>
-  /* One committed dark look. The glasses' display is additive: black is see-through. */
+  /* The game fills the window as a square; the controls sit under it. Black is see-through on the glasses, so the screen is pure black. */
   :root { --bg:#080b10; --panel:#0e131a; --line:#1d2935; --fg:#e9f2f8; --mute:#8da2b4; --cyan:#00e5ff; --gold:#ffc800; --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; color-scheme: dark; }
   * { box-sizing:border-box; }
-  body { background:var(--bg); color:var(--fg); font:15px/1.5 var(--sans); padding-block:24px 56px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
-  .wrap { max-width:720px; margin:0 auto; }
-  h1 { font-size:clamp(26px,5vw,38px); line-height:1.1; margin:0 0 6px; font-weight:900; letter-spacing:-.01em; }
-  .lede { color:var(--mute); margin:0 0 16px; max-width:62ch; } .lede b { color:var(--fg); font-weight:500; }
-  #stage { border:1px solid var(--line); background:#000; } #stage canvas { cursor:none; }
-  .strip { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin:12px 0 4px; font-size:13px; color:var(--mute); }
+  html, body { height:100%; margin:0; }
+  body { background:var(--bg); color:var(--fg); font:13px/1.4 var(--sans); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:0 max(10px,env(safe-area-inset-right,0px)) max(10px,env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px)); overflow:hidden; }
+  #stage { width:100%; height:calc(100dvh - 76px); background:#000; border:1px solid var(--line); flex:none; } #stage canvas { cursor:none; }
+  .strip { width:100%; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; justify-content:space-between; color:var(--mute); flex:none; }
+  .strip .keys { display:flex; flex-wrap:wrap; gap:4px 14px; }
+  .strip .btns { display:flex; gap:8px; }
   .strip button { font:inherit; font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#000; background:var(--cyan); border:0; padding:8px 14px; cursor:pointer; clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px); }
   .strip button:hover { background:#6ff3ff; } .strip button:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
-  .strip kbd { font:inherit; font-weight:700; color:var(--fg); border:1px solid var(--line); padding:1px 7px; background:var(--panel); }
-  h2 { font-size:13px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); margin:28px 0 6px; font-weight:700; }
-  ul.notes { margin:0; padding-left:20px; color:var(--mute); max-width:64ch; } ul.notes li { margin:4px 0; } ul.notes b { color:var(--fg); font-weight:500; }
+  .strip kbd { font:inherit; font-weight:700; color:var(--fg); border:1px solid var(--line); padding:0 6px; background:var(--panel); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>OverBlaster</h1>
-  <p class="lede">A head-aimed, voice-fired space shooter for the Raven smart glasses, playable here: the <b>story intro</b> on the Meridian's bridge, <b>Rubble</b> that bites back, the <b>Overlord BMS</b> pickup at level 3, two lost <b>battery wings</b>, and the music, effects and voice. Click the screen to begin.</p>
-  <div id="stage"></div>
-  <div class="strip">
-    <span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> turn your view</span>
-    <span>Mouse aims. <kbd>Space</kbd> or a held click is saying “Pew”</span>
-    <span id="head">Head: arrow keys or WASD</span>
-    <button id="mic" type="button">Mic: off</button><button id="mute" type="button">Sound: on</button><button id="skip" type="button" style="visibility:hidden">Skip intro</button>
-  </div>
-  <h2>What you are looking at</h2>
-  <ul class="notes">
-    <li><b>It is the glasses' view.</b> You sit in the middle of a full sky and see a 30 degree window of it. Turn your head with the arrow keys or WASD (or tilt your phone, if your browser allows motion sensors) and rocks slide across. With a mouse, the crosshair follows the pointer and a click fires; with phone motion it stays in the middle, where your head points. Every rock that is out of view has an arrow pointing to it, and it turns red, with an alarm, when the rock is critically close. A gold arrow points to crystals and the chip.</li>
-    <li><b>Rubble</b> are asteroids that bite back. Hold fire to shoot: each shot costs 1 battery, and a destroyed rock drops gold crystals that you harvest by holding your aim on them (0.3 s).</li>
-    <li><b>Saying “Pew”:</b> hold <kbd>Space</kbd> (or click and hold). With the mic switched on it is your voice: any loud sound fires, and the game's own voice is ignored while it speaks.</li>
-    <li><b>Level 3</b> brings a gold rock that drops the <b>Overlord BMS</b> chip. Hold your aim on it for 2.4 s: if your aim slips, the ring turns pink, an arrow points back, and the hold drains slowly instead of resetting.</li>
-    <li><b>Levels 14 and 28</b> each send in one of the Meridian's battery wings, lost on its last jump. Hold your aim on it for 2.4 s. The level will not end until it is yours; bring both home to win.</li>
-    <li><b>Phone:</b> hold it upright and turn. If motion is blocked, drag to look; a held touch fires. <kbd>C</kbd> recentres, <kbd>Y</kbd> and <kbd>P</kbd> flip the turn and tilt direction if they feel backwards.</li>
-  </ul>
+<div id="stage"></div>
+<div class="strip">
+  <div class="keys"><span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> / <kbd>WASD</kbd> turn</span><span>Mouse aims · <kbd>Space</kbd> or click = “Pew”</span><span><kbd>C</kbd> recentre</span><span id="head">Head: keys</span></div>
+  <div class="btns"><button id="mic" type="button">Mic: off</button><button id="mute" type="button">Sound: on</button><button id="skip" type="button" style="visibility:hidden">Skip intro</button></div>
 </div>
 <script type="module" src="/src/demo/main.ts"></script>
 </body>

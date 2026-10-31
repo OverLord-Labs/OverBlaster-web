@@ -14,10 +14,17 @@ $("mic").addEventListener("click", async () => {
 });
 $("skip").addEventListener("click", () => ob.skipIntro());
 // show "Skip intro" only while there is an intro to skip
-setInterval(() => { $("skip").style.visibility = ob.game.canSkipIntro() ? "visible" : "hidden"; $("head").textContent = ob.game.view.sensorLive ? "Head: phone motion" : "Head: arrow keys or WASD"; }, 200);
+setInterval(() => { $("skip").style.visibility = ob.game.canSkipIntro() ? "visible" : "hidden"; $("head").textContent = ob.game.view.sensorLive ? "Head: phone motion" : "Head: keys"; }, 200);
 ob.on("gameOver", (e) => console.info("game over", e));
 
-// test hooks: #test=<scene>[:arg] freezes the game on a known moment (used for screenshots); #skipstory
+// test hooks: #test=<scene>[:arg[:arg2]] jumps to a known moment and leaves it playable (add &freeze to hold it still, for screenshots)
+//   e.g. #test=lvl:28:6   level 28 after 6 s (its wing has appeared)   #test=wing:hold   #test=plate   #test=intro:36
 const hash = location.hash.slice(1);
-if (hash.startsWith("test=")) { const [name, a, b] = hash.slice(5).split(":"); applyScene(ob.game, name, a, b); }
+if (hash.startsWith("test=")) {
+  const [spec, ...flags] = hash.slice(5).split("&");
+  const [name, a, b] = spec.split(":");
+  ob.game.setAspect(stage.clientWidth / stage.clientHeight);
+  applyScene(ob.game, name, a, b);
+  if (!flags.includes("freeze")) ob.game.frozen = false;
+}
 (window as unknown as { __ob: unknown }).__ob = { ob, game: ob.game, applyScene };

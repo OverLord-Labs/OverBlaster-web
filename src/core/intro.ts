@@ -62,3 +62,7 @@ export const INTRO_CUES: Cue[] = [
 export const RISER_AT = COUNT_AT - 7.4;
 /** Where "skip story" lands: just before the countdown. */
 export const SKIP_STORY_TO = COUNT_AT - 1.2;
+
+/** The widescreen side bars part as gameplay starts: from BARS_OPEN_AT, over BARS_OPEN_S seconds. */
+export const BARS_OPEN_AT = 14.2 + SH;
+export const BARS_OPEN_S = 1.4;

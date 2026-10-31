@@ -36,7 +36,10 @@ Events (`AppEvent`): `launch`, `phase {phase}`, `levelStart {level}`, `levelClea
 
 ## Sizing
 
-The canvas fills its container's width and stays square. Give the container a width; the backing store follows (up to 2x pixel ratio).
+The canvas fills its container, so give the container a width **and a height**; any aspect ratio works. A square container shows the
+glasses' view exactly (30 degrees vertical). A wider one shows more sky to each side (up to 2.4:1). The title, the story intro and the
+game-over screen stay in a centred square with black bars either side; the bars part outward as gameplay starts. The HUD stays in that
+square too. The backing store follows the container size (up to 2x pixel ratio).
 
 ## Custom element
 

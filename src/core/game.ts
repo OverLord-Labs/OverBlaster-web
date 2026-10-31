@@ -1,5 +1,5 @@
 import {
-  ACK_MIN, BAD, BADGE_AT, CELLS, CHIP_CAPACITY, CHIP_DRAIN, CHIP_HOLD, CHIP_LEVEL, CENTER, COUNT_S, CRITICAL, CRYSTAL_RADIUS, CRYSTAL_VALUE,
+  ACK_MIN, BAD, MAX_ASPECT, BADGE_AT, CELLS, CHIP_CAPACITY, CHIP_DRAIN, CHIP_HOLD, CHIP_LEVEL, CENTER, COUNT_S, CRITICAL, CRYSTAL_RADIUS, CRYSTAL_VALUE,
   EL_LIMIT, FIRST_HOLD, GAUGE_HOLD, GAUGE_LEVEL, GAUGE_LIFE, GAUGE_RADIUS, GOLD, HARVEST, HIT_FORGIVENESS, LOADS, LOW, MAX_LEVEL, PINK,
   PPD, RESTORE_AFTER, RESTORE_ODDS, SETTLE, SHOT_COOLDOWN, SHOT_COST, SPAWN_SPREAD, START_CHARGE, W, WING_HOLD, WING_LEVELS, WING_RADIUS,
 } from "./constants";
@@ -46,6 +46,8 @@ export class Game {
   over: { t: number } | null = null;
   /** True between asking to launch and the host calling beginIntro() (while audio loads). */
   launching = false;
+  /** Extra visible width on each side of the 640 px square, in logical px (0 on a square screen). Set with setAspect(). */
+  ox = 0;
   /** Frozen games ignore update(): used by screenshot and debug tools. */
   frozen = false;
   private events: GameEvent[] = [];
@@ -62,12 +64,15 @@ export class Game {
   private sfx(name: string, gain?: number): void { this.emit({ type: "sfx", name, gain }); }
   private say(keys: string[]): void { this.emit({ type: "say", keys }); }
 
+  /** Tell the game how wide the screen is (width / height). The 30 degree vertical field stays; a wider screen sees more sky to each side. */
+  setAspect(aspect: number): void { this.ox = (clamp(aspect, 1, MAX_ASPECT) * W - W) / 2; }
+
   // ---------------------------------------------------------------- aim and projection
   proj(az: number, el: number) { return this.view.proj(az, el); }
   /** Where the crosshair is on screen: it follows the mouse; with head or phone motion it stays at the centre. */
   aimPx(): { x: number; y: number } {
     const p = this.input.pointer;
-    return p.mouse ? { x: clamp(p.x, 0, W), y: clamp(p.y, 0, W) } : { x: CENTER, y: CENTER };
+    return p.mouse ? { x: clamp(p.x, -this.ox, W + this.ox), y: clamp(p.y, 0, W) } : { x: CENTER, y: CENTER };
   }
   /** Degrees from the crosshair to a point of the sky. */
   angDist(az: number, el: number): number {
@@ -339,7 +344,7 @@ export class Game {
     // a rock that is critically close and whose arrow is showing sounds an alarm (once per rock, not more than one alarm a second)
     for (const w of g.worlds) {
       if (w.dead || g.t < w.spawnAt || this.arriving(w) || w.warned || w.p < CRITICAL) continue;
-      if (onScreen(this.proj(w.az, w.el), rockRadius(w) * PPD)) continue;
+      if (onScreen(this.proj(w.az, w.el), rockRadius(w) * PPD, this.ox)) continue;
       w.warned = true;
       if (clock - g.lastWarn > 1.0) { g.lastWarn = clock; g.warns++; this.sfx("warning", 0.9); }
     }

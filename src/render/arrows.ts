@@ -4,6 +4,7 @@ import { rockRadius } from "../core/game";
 import type { Game } from "../core/game";
 import type { Rock } from "../core/types";
 import { onScreen } from "../core/view";
+const visible = (game: { ox: number }, p: { x: number; y: number }, m: number): boolean => onScreen(p, m, game.ox);
 import { css, Draw } from "./draw";
 import { PPD } from "../core/constants";
 
@@ -17,7 +18,7 @@ export function drawArrow(d: Draw, clock: number, ang: number, radius: number, c
 /** An arrow toward a point of the sky, only while it is out of view. */
 export function drawPointer(d: Draw, game: Game, az: number, el: number, col: RGB, margin: number): void {
   const p = game.proj(az, el);
-  if (!onScreen(p, margin)) drawArrow(d, game.clock, Math.atan2(p.dy, p.dx), POINTER_RING, col, 1, false);
+  if (!visible(game, p, margin)) drawArrow(d, game.clock, Math.atan2(p.dy, p.dx), POINTER_RING, col, 1, false);
 }
 
 // one arrow for every rock that is out of view. Arrows that point the same way are stacked inward, the nearest rock outermost; a rock that is critically close gets a red, pulsing arrow
@@ -26,7 +27,7 @@ export function drawRockArrows(d: Draw, game: Game, rocks: Rock[]): void {
   const items: Item[] = [];
   for (const w of rocks) {
     const p = game.proj(w.az, w.el);
-    if (onScreen(p, rockRadius(w) * PPD)) continue;
+    if (visible(game, p, rockRadius(w) * PPD)) continue;
     items.push({ ang: Math.atan2(p.dy, p.dx), p: w.p, crit: w.p >= CRITICAL, col: w.carrier ? GOLD : CYAN });
   }
   items.sort((a, b) => a.ang - b.ang);
