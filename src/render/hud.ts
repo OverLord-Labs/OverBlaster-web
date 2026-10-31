@@ -75,6 +75,6 @@ export function drawPlate(d: Draw, game: Game): void {
     else d.fillPoly(pts, null, "rgba(255,255,255,.22)", 1);
   }
   const pa = ramp(pt, COUNT_S + 0.2, COUNT_S + 0.5) * (pt >= ACK_MIN ? 0.7 + 0.3 * Math.sin(pt * 6) : 0.5);
-  d.text("CLICK OR SPACE TO CONTINUE", 320, 452, 18, GOLD, 700, 4, "center", pa);
+  d.text(game.controls === "select" ? "PRESS SELECT TO CONTINUE" : "CLICK OR SPACE TO CONTINUE", 320, 452, 18, GOLD, 700, 4, "center", pa);
 }
 export { BADGE_AT };

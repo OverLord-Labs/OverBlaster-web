@@ -26,12 +26,12 @@ export function drawTitle(d: Draw, game: Game): void {
   ctx.save(); ctx.translate(320, 238); ctx.transform(1, 0, -0.176, 1, 0, 0); d.glow("rgba(255,255,255,.5)", 14); d.text(s, 0, 0, size, "#fff", 900, 5, "center"); d.noGlow(); ctx.restore();
   d.text("AN OVERLORD LABS GAME", 320, 334, 16, GOLD, 700, 7, "center");
   d.text("TURN YOUR HEAD TO AIM", 320, 382, 20, "#fff", 500, 1, "center");
-  d.text("SAY “PEW” TO FIRE", 320, 414, 20, "#fff", 500, 1, "center");
+  d.text(game.controls === "select" ? "PRESS SELECT TO FIRE" : "SAY “PEW” TO FIRE", 320, 414, 20, "#fff", 500, 1, "center");
   d.text("HOLD YOUR AIM ON CRYSTALS TO HARVEST THEM", 320, 446, 20, "#fff", 500, 1, "center");
   const b = LAUNCH, hov = inBox(b, ptr.x, ptr.y);
   d.fillPoly(d.cutPlate(b.x, b.y, b.x + b.w, b.y + b.h, 14), hov ? "rgba(0,229,255,.18)" : "rgba(0,229,255,.06)", css(CYAN, 0.9), 2);
   d.text("LAUNCH", 320, 532, 28, CYAN, 700, 3, "center");
-  d.text("WASD / ARROW KEYS · MOUSE AIMS · CLICK = PEW", 320, 590, 16, CYAN, 500, 3, "center");
+  if (game.controls !== "select") d.text("WASD / ARROW KEYS · MOUSE AIMS · CLICK = PEW", 320, 590, 16, CYAN, 500, 3, "center");
   if (ptr.inside) d.crosshair(ptr.x, ptr.y);
 }
 

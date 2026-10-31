@@ -20,6 +20,8 @@ export interface GameOptions {
   seed?: number;
   /** Override the difficulty curve (how much shooting a level asks of you at level 4 and level 42). */
   loads?: [number, number];
+  /** How the player fires, for the on-screen hints: "mic" (say "pew", or click / Space) or "select" (one Select / Enter / Space press, on glasses with no microphone). Default "mic". */
+  controls?: "mic" | "select";
 }
 
 const ENTRY_SPOTS: [number, number][] = [[-9, 3], [8, 6], [-3, -6], [11, -4]]; // where the first rocks come to rest: all inside the window, none on top of another
@@ -40,6 +42,8 @@ export class Game {
   readonly view = new View();
   rng: Rng;
   loads: [number, number];
+  /** How the player fires: picks the wording of the on-screen hints. */
+  readonly controls: "mic" | "select";
   input: InputFrame = emptyInput();
   intro: IntroState = { t: 0, fired: new Set(), game: false };
   run!: Run;
@@ -55,6 +59,7 @@ export class Game {
   constructor(opts: GameOptions = {}) {
     this.rng = new Rng(opts.seed ?? Math.floor(Math.random() * 4294967296));
     this.loads = opts.loads ?? LOADS;
+    this.controls = opts.controls ?? "mic";
   }
 
   // ---------------------------------------------------------------- events
@@ -264,12 +269,16 @@ export class Game {
     if (this.phase === "title") { this.launch(); return; }
     if (this.phase === "play" && this.run.mode === "intermission") { if (this.clock - this.run.plateAt >= ACK_MIN) this.acknowledge(); return; }
     if (this.phase === "over") {
-      if (inBox(RETRY, x, y)) { this.newGame(false); this.setPhase("play"); this.emit({ type: "music", name: "game" }); }
+      if (inBox(RETRY, x, y)) this.command("launch");
       else if (inBox(TOTITLE, x, y)) this.toTitle();
     }
   }
   private command(c: InputFrame["commands"][number]): void {
-    if (c === "launch") { if (this.phase === "title") this.launch(); }
+    if (c === "launch") { // the confirm key (Enter, or Select on glasses): launch, continue past a plate, or retry
+      if (this.phase === "title") this.launch();
+      else if (this.phase === "play" && this.run.mode === "intermission") { if (this.clock - this.run.plateAt >= ACK_MIN) this.acknowledge(); }
+      else if (this.phase === "over") { this.newGame(false); this.setPhase("play"); this.emit({ type: "music", name: "game" }); }
+    }
     else if (c === "skipStory") this.skipStory();
     else if (c === "skipIntro") this.skipIntro();
     else if (c === "recenter") this.view.recenter();

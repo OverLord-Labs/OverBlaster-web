@@ -139,6 +139,18 @@ describe("absolute head orientation", () => {
   });
 });
 
+describe("the confirm command (Enter / Select)", () => {
+  it("launches from the title, and retries from the game-over screen", () => {
+    const g = new Game({ seed: 1, controls: "select" });
+    expect(g.controls).toBe("select");
+    g.update(DT, { ...emptyInput(), commands: ["launch"] });
+    expect(g.launching).toBe(true);
+    const o = play(3); o.run.charge = 0; o.setPhase("over"); o.over = { t: 0 };
+    o.update(DT, { ...emptyInput(), commands: ["launch"] });
+    expect(o.phase).toBe("play");
+  });
+});
+
 describe("determinism", () => {
   it("two games with one seed and one input script end the same", () => {
     const run = () => { const g = play(9); step(g, 6, { fire: true, turn: { x: 1, y: 0 } }); return [g.run.charge, g.run.score, g.view.az, g.run.worlds.length]; };

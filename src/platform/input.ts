@@ -26,6 +26,7 @@ const ARROWS: Record<string, "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown
 export class InputController {
   private keys: Record<string, boolean> = {};
   private space = false;
+  private enter = false; // Enter is also fire: on smart glasses the Select press arrives as Enter
   private down = false;
   private ptr = { x: 320, y: 320, mouse: false, inside: false };
   private presses: { x: number; y: number }[] = [];
@@ -66,9 +67,10 @@ export class InputController {
       on(target, "keyup", (e: KeyboardEvent) => {
         if (ARROWS[e.code]) this.keys[ARROWS[e.code]] = false;
         if (e.code === "Space") this.space = false;
+        if (e.key === "Enter") this.enter = false;
       });
     }
-    on(window, "blur", () => { this.keys = {}; this.space = false; this.down = false; });
+    on(window, "blur", () => { this.keys = {}; this.space = false; this.enter = false; this.down = false; });
     if (opts.motion) {
       on(window, "deviceorientation", (e: DeviceOrientationEvent) => {
         if (e.alpha == null || e.beta == null) return;
@@ -80,7 +82,7 @@ export class InputController {
   private keydown(e: KeyboardEvent): void {
     if (ARROWS[e.code]) { e.preventDefault(); this.keys[ARROWS[e.code]] = true; return; }
     if (e.code === "Space") { e.preventDefault(); if (!this.space) { this.space = true; this.presses.push({ x: this.ptr.x, y: this.ptr.y }); } return; }
-    if (e.key === "Enter") this.commands.push("launch");
+    if (e.key === "Enter") { e.preventDefault(); this.enter = true; if (!e.repeat) this.commands.push("launch"); }
     else if (e.key === "Escape") this.commands.push("skipStory");
     else if (e.key === "c" || e.key === "C") this.commands.push("recenter");
     else if (e.key === "y" || e.key === "Y") this.commands.push("flipYaw");
@@ -111,7 +113,7 @@ export class InputController {
     f.turn.x = (this.keys.ArrowRight ? 1 : 0) - (this.keys.ArrowLeft ? 1 : 0);
     f.turn.y = (this.keys.ArrowUp ? 1 : 0) - (this.keys.ArrowDown ? 1 : 0);
     f.orientation = this.orient && performance.now() - this.orient.at < 800 ? { alpha: this.orient.alpha, beta: this.orient.beta } : null;
-    f.fire = this.down || this.space || this.micFire;
+    f.fire = this.down || this.space || this.enter || this.micFire;
     f.pointer = { ...this.ptr };
     f.look = this.look; this.look = { dx: 0, dy: 0 };
     f.presses = this.presses; this.presses = [];

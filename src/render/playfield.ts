@@ -168,10 +168,11 @@ export function drawPlayfield(d: Draw, game: Game): void {
   if (g.tutorial && g.level === 1 && g.mode === "playing") {
     const tt = clock - g.tutT0, p1 = ramp(tt, 2.6, 3.0) * (1 - ramp(tt, 7.0, 7.4)), p2 = ramp(tt, 7.4, 7.8) * (0.7 + 0.3 * Math.sin(tt * 12));
     const ms = ptr.mouse;
-    d.text(ms ? "AIM WITH THE MOUSE" : "TURN YOUR HEAD", 320, 548, 22, CYAN, 700, 6, "center", p1);
-    d.text(ms ? "WASD OR ARROW KEYS TURN YOUR VIEW" : game.view.sensorLive ? "PHONE MOTION" : "WASD OR ARROW KEYS", 320, 576, 15, CYAN, 500, 5, "center", p1 * 0.8);
-    d.text(ms ? "CLICK TO FIRE" : "SAY “PEW”", 320, 548, 28, GOLD, 900, 6, "center", p2);
-    d.text(ms ? "OR HOLD SPACE" : "HOLD SPACE (OR SAY IT, WITH THE MIC ON)", 320, 576, 15, GOLD, 500, 3, "center", p2 * 0.8);
+    const sel = game.controls === "select";
+    d.text(ms && !sel ? "AIM WITH THE MOUSE" : "TURN YOUR HEAD", 320, 548, 22, CYAN, 700, 6, "center", p1);
+    if (!sel) d.text(ms ? "WASD OR ARROW KEYS TURN YOUR VIEW" : game.view.sensorLive ? "PHONE MOTION" : "WASD OR ARROW KEYS", 320, 576, 15, CYAN, 500, 5, "center", p1 * 0.8);
+    d.text(sel ? "PRESS SELECT" : ms ? "CLICK TO FIRE" : "SAY “PEW”", 320, 548, 28, GOLD, 900, 6, "center", p2);
+    if (!sel) d.text(ms ? "OR HOLD SPACE" : "HOLD SPACE (OR SAY IT, WITH THE MIC ON)", 320, 576, 15, GOLD, 500, 3, "center", p2 * 0.8);
   }
   const bt = clock - g.badT0;
   if (bt >= 0 && bt < 0.8 && g.bad) {
