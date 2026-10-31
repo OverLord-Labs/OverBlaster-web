@@ -11,6 +11,10 @@ logo.png
 
 and pass its URL as `assetsUrl`. Or use `npm run build:single` for one HTML file with everything inlined.
 
+## From a release
+
+Each tagged release (`v*`) on GitHub publishes the files ready to use: `overblaster.js` (ES module), `overblaster.umd.cjs`, `overblaster.d.ts` (one bundled declaration file), `overblaster.html` (the whole game in one file, audio inlined) and `overblaster-assets.zip`. Unzip the assets into the folder you serve, so you have `audio/` and `logo.png` next to each other, and pass that folder's URL as `assetsUrl`. `npm run build && npm run build:single && npm run build:release` makes the same files in `dist/release`.
+
 ## API
 
 ```ts
@@ -24,6 +28,8 @@ const ob = OverBlaster.mount(element, options);   // element: a container (a can
 | `skipIntro` | `false` | go straight to level 1 on launch |
 | `keyboard` | `"focus"` | `"focus"`: keys only while the game is focused (click it); `"window"`: anywhere; `"off"` |
 | `motion` | `true` | phone orientation steers the view |
+| `soundButton` | `true` | the speaker icon in the top-left corner of the game (hidden when `sound` is `false`); `M` also toggles |
+| `onMuteChange` | none | `(muted: boolean) => void`, called whenever sound is switched on or off |
 | `autoPause` | `true` | pause when the tab is hidden or the game is off screen |
 | `seed` | random | same seed, same levels |
 | `loads` | `[0.3, 0.55]` | difficulty curve (see `core/constants.ts`) |
