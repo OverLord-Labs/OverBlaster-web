@@ -324,6 +324,7 @@ export class Game {
     g.bolts.forEach((b) => { b.t += dt; }); g.bolts = g.bolts.filter((b) => b.t < 0.3);
     g.fx.forEach((f) => { f.t += dt; }); g.fx = g.fx.filter((f) => f.t < 1.2);
     g.floaters.forEach((f) => { f.t += dt; }); g.floaters = g.floaters.filter((f) => f.t < 1.2);
+    if (g.callout && clock - g.callout.t0 > g.callout.dur) g.callout = null;
     if (g.mode === "lost") {
       g.lostT += dt;
       if (g.lostT >= (g.lostCause === "hull" ? 1.4 : 0.6)) { this.setPhase("over"); this.over = { t: 0 }; this.emit({ type: "gameOver", won: false, cause: g.lostCause as "hull" | "battery", score: g.score, level: g.level }); }
@@ -365,7 +366,7 @@ export class Game {
     }
     // the level's wing drifts in a few seconds after it starts, and the level will not end until it is yours
     const wi = WING_LEVELS.indexOf(g.level);
-    if (g.mode === "playing" && wi >= 0 && g.wings <= wi && !g.wing && !g.wingSpawned && g.t > 5) {
+    if (g.mode === "playing" && wi >= 0 && !g.wing && !g.wingSpawned && g.t > 5) {
       g.wingSpawned = true;
       g.wing = { az: wrap360(this.view.az + (this.rng.next() < 0.5 ? -1 : 1) * (28 + this.rng.next() * 14)), el: 2, age: 0, dwell: 0, onTarget: false };
       this.sfx("warning", 0.8); g.floaters.push({ az: g.wing.az, el: g.wing.el + 5, t: 0, s: "BATTERY WING" });
@@ -395,7 +396,7 @@ export class Game {
     if (frac < LOW && !g.lowFired) { g.lowFired = true; this.sfx("low_battery"); this.say(["battery_low"]); } else if (frac >= LOW + 0.1) g.lowFired = false;
     const pending = g.worlds.some((w) => !w.dead);
     if (g.mode === "playing") {
-      if (!pending && !g.crystals.length && !g.chip && !g.wing && !(wi >= 0 && g.wings <= wi)) {
+      if (!pending && !g.crystals.length && !g.chip && !g.wing && !(wi >= 0 && !g.wingSpawned)) {
         g.mode = "intermission"; g.interT = 0; g.gauges = [];
         const left = g.awardT0 != null ? Math.max(0, SETTLE - (clock - g.awardT0)) : 0;
         g.plateAt = clock + left; g.plateVoiced = 0;

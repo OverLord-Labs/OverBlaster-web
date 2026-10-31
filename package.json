@@ -9,8 +9,7 @@
   "module": "./dist/lib/overblaster.js",
   "types": "./dist/lib/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/lib/index.d.ts", "import": "./dist/lib/overblaster.js", "require": "./dist/lib/overblaster.umd.cjs" },
-    "./core": { "types": "./dist/lib/core/index.d.ts" }
+    ".": { "types": "./dist/lib/index.d.ts", "import": "./dist/lib/overblaster.js", "require": "./dist/lib/overblaster.umd.cjs" }
   },
   "files": ["dist", "public/audio", "public/logo.png"],
   "scripts": {
