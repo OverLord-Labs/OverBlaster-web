@@ -6,10 +6,9 @@ const stage = document.getElementById("stage")!;
 const $ = (id: string) => document.getElementById(id) as HTMLButtonElement;
 // #...&seed=N makes a run reproducible (used by tools/compare_web.py in the Raven repo to line the two games up)
 const seedFlag = /[#&]seed=(\d+)/.exec(location.hash);
-const ob = OverBlaster.mount(stage, { assetsUrl: "./", keyboard: "window", seed: seedFlag ? Number(seedFlag[1]) : undefined });
+const ob = OverBlaster.mount(stage, { assetsUrl: "./", keyboard: "window", onMuteChange: (m) => { $("mute").textContent = "Sound: " + (m ? "off" : "on"); }, seed: seedFlag ? Number(seedFlag[1]) : undefined });
 
-$("mute").addEventListener("click", () => { ob.setMuted(!ob.muted); $("mute").textContent = "Sound: " + (ob.muted ? "off" : "on"); });
-window.addEventListener("keydown", (e) => { if (e.key === "m" || e.key === "M") $("mute").textContent = "Sound: " + (ob.muted ? "off" : "on"); });
+$("mute").addEventListener("click", () => ob.setMuted(!ob.muted));
 $("mic").addEventListener("click", async () => {
   const r = await ob.toggleMic();
   $("mic").textContent = r === "on" ? "Mic: on (say pew)" : r === "off" ? "Mic: off" : r === "blocked" ? "Mic: blocked" : "Mic: not available here";

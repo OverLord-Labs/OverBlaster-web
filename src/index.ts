@@ -3,6 +3,7 @@ import type { AppEvent } from "./core/events";
 import { isSound } from "./core/events";
 import { Game } from "./core/game";
 import type { GameOptions } from "./core/game";
+import { inBox, soundBox } from "./core/layout";
 import { AudioEngine } from "./platform/audio";
 import { InputController } from "./platform/input";
 import type { KeyboardScope } from "./platform/input";
@@ -20,6 +21,10 @@ export interface OverBlasterOptions extends GameOptions {
   keyboard?: KeyboardScope;
   /** Use phone motion sensors to turn the view. Default true. */
   motion?: boolean;
+  /** Show the speaker button in the top-left corner of the game. Default true (it is hidden when `sound` is false). */
+  soundButton?: boolean;
+  /** Called when sound is switched on or off (the button, the M key, or setMuted). */
+  onMuteChange?: (muted: boolean) => void;
   /** Pause automatically when the tab is hidden or the game scrolls out of view. Default true. */
   autoPause?: boolean;
 }
@@ -74,6 +79,10 @@ export class OverBlaster {
     this.input = new InputController(this.canvas, {
       keyboard: opts.keyboard ?? "focus", motion: opts.motion !== false,
       onKey: (k) => { if (k === "m" || k === "M") this.setMuted(!this.muted); },
+      onPress: (p) => {
+        if (!this.audio || opts.soundButton === false || !inBox(soundBox(this.game.ox), p.x, p.y)) return false;
+        this.setMuted(!this.muted); return true;
+      },
     });
     this.audio = opts.sound === false ? null : new AudioEngine({ baseUrl: base + "audio/" });
     this.mic = new Mic(() => this.audio?.context ?? null);
@@ -97,7 +106,7 @@ export class OverBlaster {
       this.audio?.tick();
     } else this.input.frame(); // keep draining so a pause does not queue clicks
     for (const e of this.game.drain()) this.dispatch(e);
-    this.renderer.render(this.game);
+    this.renderer.render(this.game, this.audio && this.opts.soundButton !== false ? { muted: this.muted } : null);
   }
 
   private dispatch(e: ReturnType<Game["drain"]>[number]): void {
@@ -130,7 +139,7 @@ export class OverBlaster {
   pause(): void { this.userPaused = true; this.syncPause(); }
   resume(): void { this.userPaused = false; this.syncPause(); }
   get muted(): boolean { return !!this.audio?.muted; }
-  setMuted(m: boolean): void { this.audio?.setMuted(m); }
+  setMuted(m: boolean): void { if (!this.audio) return; this.audio.setMuted(m); this.opts.onMuteChange?.(m); }
   recenter(): void { this.input.command("recenter"); }
   /** Jump from the story/countdown into level 1. */
   skipIntro(): void { this.input.command("skipIntro"); }

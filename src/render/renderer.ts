@@ -2,10 +2,11 @@ import { CYAN, W } from "../core/constants";
 import { BARS_OPEN_AT, BARS_OPEN_S } from "../core/intro";
 import { ease, ramp } from "../core/math";
 import type { Game } from "../core/game";
-import { SKIPS, inBox } from "../core/layout";
+import { SKIPS, inBox, soundBox } from "../core/layout";
 import { Draw } from "./draw";
 import { drawPlayfield } from "./playfield";
 import { drawOver, drawTitle } from "./screens";
+import { drawSoundIcon } from "./soundicon";
 import { drawIntro } from "./story";
 
 /**
@@ -42,7 +43,7 @@ export class Renderer {
   }
 
   /** Draw the game. The 640 x 640 square is the glasses' view and sits in the middle; a wider canvas shows more sky to each side. */
-  render(game: Game): void {
+  render(game: Game, ui: { muted: boolean } | null = null): void {
     const d = this.draw, ctx = d.ctx, k = this.canvas.height / W;
     const now = performance.now(), dt = Math.min(0.1, (now - this.lastNow) / 1000); this.lastNow = now;
     const tgt = this.barsTarget(game);
@@ -67,7 +68,9 @@ export class Renderer {
     ctx.restore();
     this.drawBars(ox); // the bars are painted last: the top layer
     const ptr = game.input.pointer;
-    this.canvas.style.cursor = game.storyBtnVisible() ? (inBox(SKIPS, ptr.x, ptr.y) ? "pointer" : "default") : "none";
+    const hoverSound = !!ui && ptr.inside && inBox(soundBox(ox), ptr.x, ptr.y);
+    if (ui) drawSoundIcon(d, ox, ui.muted, hoverSound); // a host control on the very top layer, over the bars too
+    this.canvas.style.cursor = hoverSound ? "pointer" : game.storyBtnVisible() ? (inBox(SKIPS, ptr.x, ptr.y) ? "pointer" : "default") : "none";
   }
 
   /** The theatrical bars: black on both sides of the square, parting outward as the open amount rises. */

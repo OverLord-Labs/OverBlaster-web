@@ -10,6 +10,8 @@ export interface InputOptions {
   motion: boolean;
   /** Called for keys the host owns (e.g. "m" for mute). */
   onKey?: (key: string) => void;
+  /** Called first on a pointer press, in game space. Return true if the host used it (a button): the game never sees it. */
+  onPress?: (p: { x: number; y: number }) => boolean;
 }
 
 const ARROWS: Record<string, "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown"> = {
@@ -49,7 +51,9 @@ export class InputController {
     on(canvas, "pointerdown", (e: PointerEvent) => {
       const p = this.toGame(e);
       if (e.pointerType === "mouse" || e.pointerType === "pen") this.ptr.mouse = true;
-      this.ptr.x = p.x; this.ptr.y = p.y; this.down = true; this.presses.push(p);
+      this.ptr.x = p.x; this.ptr.y = p.y;
+      if (opts.onPress?.(p)) return;
+      this.down = true; this.presses.push(p);
       if (opts.keyboard === "focus") canvas.focus({ preventScroll: true });
       try { canvas.setPointerCapture(e.pointerId); } catch { /* not capturable: fine */ }
     });
