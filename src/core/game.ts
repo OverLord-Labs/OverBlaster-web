@@ -285,8 +285,8 @@ export class Game {
     else if (c === "flipYaw") this.view.flipYaw();
     else if (c === "flipPitch") this.view.flipPitch();
   }
-  /** Is the in-canvas "skip story" button showing? */
-  storyBtnVisible(): boolean { return this.phase === "intro" && !this.intro.game && this.intro.t > 0.9 && this.intro.t < COUNT_AT - 1.6; }
+  /** Is the in-canvas "skip story" button showing? (Not in "select" mode, where nothing can point at it.) */
+  storyBtnVisible(): boolean { return this.controls !== "select" /* no pointer to press it with: Back / Escape skips */ && this.phase === "intro" && !this.intro.game && this.intro.t > 0.9 && this.intro.t < COUNT_AT - 1.6; }
   /** Is a skip control worth offering right now (story or countdown still running)? */
   canSkipIntro(): boolean { return this.phase === "intro" && this.intro.t < GAME_AT; }
 

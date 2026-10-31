@@ -18,7 +18,12 @@
   .strip button { font:inherit; font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#000; background:var(--cyan); border:0; padding:8px 14px; cursor:pointer; clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px); }
   .strip button:hover { background:#6ff3ff; } .strip button:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
   .strip kbd { font:inherit; font-weight:700; color:var(--fg); border:1px solid var(--line); padding:0 6px; background:var(--panel); }
+  /* ?glasses: the page as it looks on Meta Ray-Ban Display (or in its simulator): just the game, edge to edge, no controls */
+  .glasses body { padding:0; gap:0; background:#000; display:block; }
+  .glasses #stage { position:fixed; inset:0; width:auto; height:auto; border:0; }
+  .glasses .strip { display:none; }
 </style>
+<script>if (/[?#&]glasses\b/.test(location.search + location.hash)) document.documentElement.classList.add("glasses");</script>
 </head>
 <body>
 <div id="stage"></div>

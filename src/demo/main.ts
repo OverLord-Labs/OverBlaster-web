@@ -6,7 +6,9 @@ const stage = document.getElementById("stage")!;
 const $ = (id: string) => document.getElementById(id) as HTMLButtonElement;
 // #...&seed=N makes a run reproducible (used by tools/compare_web.py in the Raven repo to line the two games up)
 const seedFlag = /[#&]seed=(\d+)/.exec(location.hash);
-const ob = OverBlaster.mount(stage, { assetsUrl: "./", keyboard: "window", onMuteChange: (m) => { $("mute").textContent = "Sound: " + (m ? "off" : "on"); }, seed: seedFlag ? Number(seedFlag[1]) : undefined });
+// ?glasses (or #glasses): the Meta Ray-Ban Display look: no controls under the game or in its corner, hints worded for Select (no mic, no cursor)
+const glasses = /[?#&]glasses\b/.test(location.search + location.hash);
+const ob = OverBlaster.mount(stage, { assetsUrl: "./", keyboard: "window", ...(glasses ? { controls: "select", soundButton: false } : {}), onMuteChange: (m) => { $("mute").textContent = "Sound: " + (m ? "off" : "on"); }, seed: seedFlag ? Number(seedFlag[1]) : undefined });
 
 $("mute").addEventListener("click", () => ob.setMuted(!ob.muted));
 $("mic").addEventListener("click", async () => {

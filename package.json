@@ -1,6 +1,6 @@
 {
   "name": "overblaster",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "OverBlaster by OverLord Labs: a head-aimed, voice-fired space shooter. Embeddable, framework-free TypeScript.",
   "type": "module",
   "license": "UNLICENSED",
