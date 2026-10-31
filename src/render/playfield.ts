@@ -152,7 +152,7 @@ export function drawPlayfield(d: Draw, game: Game): void {
   drawCells(d, clock, frac, tone, true, 1);
   ctx.strokeStyle = css(tone, 0.5); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(164, 8); ctx.lineTo(164, 62); ctx.stroke();
   d.text("LVL " + g.level, 176, 44, 26, tone, 700, 2);
-  for (let wk = 0; wk < 2; wk++) wingIcon(d, 322 + wk * 58, 35, 0.34, g.wings > wk ? 0.9 : 0.12, g.wings <= wk, -0.15, true);
+  for (let wk = 0; wk < 2; wk++) wingIcon(d, 364 + wk * 46, 35, 0.3, g.wings > wk ? 0.9 : 0.12, g.wings <= wk, -0.15, true);
   d.text(String(g.score), 535, 40, 28, "#fff", 700, 0, "right");
   const badge = aT != null ? ramp(aT, BADGE_AT, BADGE_AT + 0.5) : g.chipCollected ? 1 : 0;
   if (g.bad) {
