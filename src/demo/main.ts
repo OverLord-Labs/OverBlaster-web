@@ -4,7 +4,9 @@ import { applyScene } from "../debug/scenes";
 // The demo page: the game in a box, plus the control strip. Everything the page does goes through the public OverBlaster API.
 const stage = document.getElementById("stage")!;
 const $ = (id: string) => document.getElementById(id) as HTMLButtonElement;
-const ob = OverBlaster.mount(stage, { assetsUrl: "./", keyboard: "window" });
+// #...&seed=N makes a run reproducible (used by tools/compare_web.py in the Raven repo to line the two games up)
+const seedFlag = /[#&]seed=(\d+)/.exec(location.hash);
+const ob = OverBlaster.mount(stage, { assetsUrl: "./", keyboard: "window", seed: seedFlag ? Number(seedFlag[1]) : undefined });
 
 $("mute").addEventListener("click", () => { ob.setMuted(!ob.muted); $("mute").textContent = "Sound: " + (ob.muted ? "off" : "on"); });
 window.addEventListener("keydown", (e) => { if (e.key === "m" || e.key === "M") $("mute").textContent = "Sound: " + (ob.muted ? "off" : "on"); });
@@ -21,7 +23,7 @@ ob.on("gameOver", (e) => console.info("game over", e));
 //   e.g. #test=lvl:28:6   level 28 after 6 s (its wing has appeared)   #test=wing:hold   #test=plate   #test=intro:36
 const hash = location.hash.slice(1);
 if (hash.startsWith("test=")) {
-  const [spec, ...flags] = hash.slice(5).split("&");
+  const [spec, ...flags] = hash.slice(5).split("&");   // flags: freeze, seed=N
   const [name, a, b] = spec.split(":");
   ob.game.setAspect(stage.clientWidth / stage.clientHeight);
   applyScene(ob.game, name, a, b);

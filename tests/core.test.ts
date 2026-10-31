@@ -129,6 +129,16 @@ describe("the intro", () => {
   });
 });
 
+describe("absolute head orientation", () => {
+  it("sets the view directly and ignores keys and drag", () => {
+    const g = play();
+    step(g, 0.5, { head: { az: 350, el: 5 }, turn: { x: 1, y: 1 }, look: { dx: 50, dy: 50 } });
+    expect(g.view.az).toBeCloseTo(350, 9); expect(g.view.el).toBeCloseTo(5, 9); expect(g.view.sensorLive).toBe(false);
+    step(g, DT, { head: { az: -10, el: 99 } });
+    expect(g.view.az).toBeCloseTo(350, 9); expect(g.view.el).toBe(38);
+  });
+});
+
 describe("determinism", () => {
   it("two games with one seed and one input script end the same", () => {
     const run = () => { const g = play(9); step(g, 6, { fire: true, turn: { x: 1, y: 0 } }); return [g.run.charge, g.run.score, g.view.az, g.run.worlds.length]; };

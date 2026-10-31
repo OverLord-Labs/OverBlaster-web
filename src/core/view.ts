@@ -34,6 +34,12 @@ export class View {
   }
 
   update(dt: number, input: InputFrame): void {
+    const h = input.head;
+    if (h) { // a head tracker reports where the head points: use it as is
+      this.sensorLive = false;
+      this.az = wrap360(h.az); this.el = clamp(h.el, -EL_LIMIT, EL_LIMIT); this.rAz = this.rEl = 0;
+      return;
+    }
     const o = input.orientation;
     this.sensorLive = !!o;
     if (o) {

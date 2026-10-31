@@ -25,7 +25,7 @@ the numbers in the `determinism` test; your port should print the same charge, s
 
 | adapter | job | web version |
 |---|---|---|
-| input | fill an `InputFrame` each frame: `turn`, `orientation`, `fire`, `pointer`, `look`, `presses`, `commands` | `platform/input.ts` |
+| input | fill an `InputFrame` each frame: `turn`, `orientation`, `head` (absolute head az/el from a head tracker: sets the view directly), `fire`, `pointer`, `look`, `presses`, `commands` | `platform/input.ts` |
 | audio | play `SoundEvent`s: `sfx` (sample `sfx_<name>`), `say` (queue of `voice_<key>` clips; `[]` cuts it off), `music`, `alarm`, `drone`, `zap` (3 synthesised effects), `stopRiser` | `platform/audio.ts` |
 | renderer | draw `Game` state in a 640 x 640 logical space | `render/*` |
 

@@ -17,6 +17,8 @@ export interface InputFrame {
   turn: { x: number; y: number };
   /** Live device orientation in degrees, or null when no sensor has reported lately. */
   orientation: { alpha: number; beta: number } | null;
+  /** Absolute head orientation in degrees (a head tracker on smart glasses), or null. When present it sets the view directly and the turn keys, drag and orientation are ignored. */
+  head: { az: number; el: number } | null;
   /** Fire is held (mouse down, space, a touch, or a loud sound on the mic). */
   fire: boolean;
   /** The pointer in logical screen px (0..640). `mouse` is true once a mouse or pen has moved over the screen. */
@@ -32,6 +34,7 @@ export function emptyInput(): InputFrame {
   return {
     turn: { x: 0, y: 0 },
     orientation: null,
+    head: null,
     fire: false,
     pointer: { x: 320, y: 320, mouse: false, inside: false },
     look: { dx: 0, dy: 0 },
