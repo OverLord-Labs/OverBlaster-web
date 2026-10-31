@@ -348,8 +348,6 @@ export function drawIntro(d: Draw, game: Game, drawPlayfield: (d: Draw, game: Ga
       ctx.save(); ctx.globalAlpha = Math.min(1, p * 6); d.drawRock(320 + Math.cos(db.a) * r, 320 + Math.sin(db.a) * r, 4 + db.sz * p * p, db.rot + t * 1.5, PINK, true, false, false); ctx.restore();
     });
   }
-  const fl = 0.95 * ramp(t, 13.9 + SH, 14.3 + SH) * (1 - ramp(t, 14.3 + SH, 15.0 + SH));
-  if (fl > 0) { ctx.fillStyle = `rgba(255,255,255,${fl})`; ctx.fillRect(-game.ox, 0, W + 2 * game.ox, W); } // the flash covers the whole screen, bars or not
   // the narrator's captions: at the top over the bridge, at the bottom over the map
   INTRO_LINES.forEach((l, k) => {
     if (t >= l[0] && t < l[1]) {
