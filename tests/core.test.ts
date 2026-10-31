@@ -145,7 +145,7 @@ describe("the confirm command (Enter / Select)", () => {
     expect(g.controls).toBe("select");
     g.update(DT, { ...emptyInput(), commands: ["launch"] });
     expect(g.launching).toBe(true);
-    const o = play(3); o.run.charge = 0; o.setPhase("over"); o.over = { t: 0 };
+    const o = play(3); o.run.charge = 0; (o as unknown as { setPhase(p: string): void }).setPhase("over");
     o.update(DT, { ...emptyInput(), commands: ["launch"] });
     expect(o.phase).toBe("play");
   });
