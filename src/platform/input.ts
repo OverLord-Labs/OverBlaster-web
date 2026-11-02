@@ -35,6 +35,10 @@ export class InputController {
   private orient: { alpha: number; beta: number; at: number } | null = null;
   /** Set from outside (the microphone adapter): a loud sound counts as holding fire. */
   micFire = false;
+  /** Set from outside (a native shell, a relay): where the head points in degrees, or null to use keys, mouse and device sensors. */
+  head: { az: number; el: number } | null = null;
+  /** Set from outside: a trigger that is held down (OR-ed with the mouse, keys and microphone). */
+  externalFire = false;
   private off: (() => void)[] = [];
 
   constructor(private canvas: HTMLCanvasElement, private opts: InputOptions) {
@@ -113,7 +117,8 @@ export class InputController {
     f.turn.x = (this.keys.ArrowRight ? 1 : 0) - (this.keys.ArrowLeft ? 1 : 0);
     f.turn.y = (this.keys.ArrowUp ? 1 : 0) - (this.keys.ArrowDown ? 1 : 0);
     f.orientation = this.orient && performance.now() - this.orient.at < 800 ? { alpha: this.orient.alpha, beta: this.orient.beta } : null;
-    f.fire = this.down || this.space || this.enter || this.micFire;
+    f.fire = this.down || this.space || this.enter || this.micFire || this.externalFire;
+    f.head = this.head ? { ...this.head } : null;
     f.pointer = { ...this.ptr };
     f.look = this.look; this.look = { dx: 0, dy: 0 };
     f.presses = this.presses; this.presses = [];

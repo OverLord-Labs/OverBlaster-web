@@ -141,6 +141,13 @@ export class OverBlaster {
   get muted(): boolean { return !!this.audio?.muted; }
   setMuted(m: boolean): void { if (!this.audio) return; this.audio.setMuted(m); this.opts.onMuteChange?.(m); }
   recenter(): void { this.input.command("recenter"); }
+  /**
+   * Drive the view from a head tracker you own (a native app, glasses sensors): degrees, azimuth 0..360 turning right, elevation up.
+   * The game uses it as is: do your own zeroing and gain. `setHead(null)` hands the view back to keys, mouse and device sensors.
+   */
+  setHead(az: number | null, el = 0): void { this.input.head = az == null ? null : { az, el }; }
+  /** Hold the trigger from outside (a recognised "pew"): true while held. Works with the mouse, keys and microphone, not instead of them. */
+  setFire(held: boolean): void { this.input.externalFire = held; }
   /** Jump from the story/countdown into level 1. */
   skipIntro(): void { this.input.command("skipIntro"); }
   /** Switch the microphone on or off ("say pew" fires). Must be called from a click or key press. */

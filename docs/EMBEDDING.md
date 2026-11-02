@@ -36,7 +36,12 @@ const ob = OverBlaster.mount(element, options);   // element: a container (a can
 | `loads` | `[0.3, 0.55]` | difficulty curve (see `core/constants.ts`) |
 
 Methods: `on(type | "*", fn)` (returns unsubscribe), `pause()`, `resume()`, `setMuted(bool)`, `muted`, `recenter()`, `skipIntro()`,
-`toggleMic()` (call from a click), `micOn`, `phase`, `game` (the core `Game`, read-only use please), `destroy()`.
+`toggleMic()` (call from a click), `micOn`, `setHead(az | null, el)`, `setFire(held)`, `phase`, `game` (the core `Game`, read-only use please), `destroy()`.
+
+`setHead` and `setFire` are for hosts that own the sensors, such as a native app that reads glasses motion and microphone and
+loads the game in a WebView: `setHead(az, el)` sets where the head points in degrees (azimuth 0 to 360 turning right, elevation up;
+zero it and apply any gain on your side), `setHead(null)` hands the view back to keys, mouse and device sensors, and
+`setFire(true / false)` holds the trigger (together with mouse, keys and the microphone, not instead of them). Pair them with `controls: "voice"`.
 
 Events (`AppEvent`): `launch`, `phase {phase}`, `levelStart {level}`, `levelClear {level, score}`, `chipFound`, `wingFound {wings}`,
 `gameOver {won, cause, score, level}`.
