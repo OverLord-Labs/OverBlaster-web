@@ -156,6 +156,8 @@ export class OverBlaster {
     return this.mic.enable();
   }
   get micOn(): boolean { return this.mic.on; }
+  /** True while the game's own voice (narrator, announcer) is talking: a native microphone trigger should ignore sound then. */
+  get speaking(): boolean { return !!this.audio?.isSpeaking(); }
   get phase(): Game["phase"] { return this.game.phase; }
   /** Stop everything and remove what mount() added. */
   destroy(): void {
