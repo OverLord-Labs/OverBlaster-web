@@ -1,4 +1,4 @@
-import { BAD, CHIP_CAPACITY, GAME_AT, HIT_FORGIVENESS, INTRO_CUES, MAX_LEVEL, Game, botTarget, emptyInput, rockRadius } from "../core";
+import { BAD, CHIP_CAPACITY, GAME_AT, INTRO_CUES, MAX_LEVEL, Game, botTarget, emptyInput, hitRadius } from "../core";
 import type { InputFrame } from "../core";
 
 /**
@@ -44,7 +44,7 @@ export function applyScene(g: Game, name: string, arg?: string, arg2?: string): 
   const R = () => g.run;
   const free = (lvl: number) => { R().chipCollected = true; R().capacity = CHIP_CAPACITY; R().charge = CHIP_CAPACITY; g.startLevel(lvl); };
   const enough = (w: { dead: boolean; spawnAt: number }) => !w.dead && R().t >= w.spawnAt;
-  const inReach = () => R().worlds.some((w) => enough(w) && !g.arriving(w) && g.angDist(w.az, w.el) <= rockRadius(w) * HIT_FORGIVENESS);
+  const inReach = () => R().worlds.some((w) => enough(w) && !g.arriving(w) && g.angDist(w.az, w.el) <= hitRadius(w));
   if (name === "splash") step(g, inp, 2.6, false, false);
   else if (name === "arrow") step(g, inp, 5.5, false, false);
   else if (name === "rocks") { step(g, inp, 9, false, false); face(g); }

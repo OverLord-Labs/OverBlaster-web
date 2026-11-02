@@ -69,7 +69,7 @@ describe("harvesting and shooting", () => {
     }
     expect(g1.crystals.length).toBeGreaterThan(0);
     g1.charge = 50;
-    const c = g1.crystals[0]; look(g, c); step(g, 0.5);
+    const c = g1.crystals[0]; look(g, c); step(g, 1.5); // after the short delay
     expect(g1.charge).toBeGreaterThan(50);
   });
 });
@@ -112,15 +112,62 @@ describe("the intro", () => {
     expect(ev.some((e) => e.type === "music" && e.name === "game")).toBe(true);
     expect(g.run.level).toBe(1);
   });
-  it("skipStory lands before the countdown, cuts the voice and keeps the later cues", () => {
+  it("skipStory lands on the countdown, cuts the voice and keeps the later cues", () => {
     const g = new Game({ seed: 2 }); g.beginIntro(); step(g, 3);
     g.update(DT, { ...emptyInput(), commands: ["skipStory"] });
     const ev = g.drain();
     expect(ev.some((e) => e.type === "say" && e.keys.length === 0)).toBe(true);
-    expect(g.intro.t).toBeGreaterThan(COUNT_AT - 1.5); expect(g.intro.t).toBeLessThan(COUNT_AT);
+    expect(g.intro.t).toBeGreaterThanOrEqual(COUNT_AT); expect(g.intro.t).toBeLessThan(COUNT_AT + 0.2); // the 3 is next, not the map
     const rest = step(g, 6);
-    expect(rest.some((e) => e.type === "say" && e.keys[0] === "m_three")).toBe(true);
+    expect([...ev, ...rest].some((e) => e.type === "say" && e.keys[0] === "m_three")).toBe(true); // voiced straight away
     expect(rest.some((e) => e.type === "say" && e.keys[0] === "m_go")).toBe(true);
+  });
+  it("a crystal your aim gets near flies to the crosshair and is collected, even if you look away", () => {
+    const g = play(); const R = g.run;
+    R.worlds = []; R.tutorial = false; const start = R.charge = 50;
+    R.crystals = [{ az: g.view.az + 4, el: g.view.el, age: 1, dwell: 0 }];
+    step(g, 0.05); expect(R.crystals[0]?.locked).toBe(true);
+    step(g, 0.2, { turn: { x: 1, y: 0 } }); // look away as it comes
+    step(g, 1.0);
+    expect(R.crystals.length).toBe(0); expect(R.charge).toBeGreaterThan(start);
+  });
+  it("a fresh crystal sits there for a moment, even right under the crosshair", () => {
+    const g = play(); const R = g.run; R.worlds = [g.makeWorld({ az: 0, el: 0, spawnAt: 9999, approach: 30, hp: 3 })]; R.tutorial = false;
+    R.crystals = [{ az: g.view.az, el: g.view.el + 0.5, age: 0, dwell: 0 }];
+    step(g, 0.3); expect(R.crystals.length).toBe(1); expect(R.crystals[0].locked).toBeFalsy();
+    step(g, 1.0); expect(R.crystals.length).toBe(0);
+  });
+  it("bad gauges keep apart instead of stacking", () => {
+    const g = play(); const R = g.run; R.worlds = [g.makeWorld({ az: 0, el: 0, spawnAt: 9999, approach: 30, hp: 3 })];
+    const mk = (seed: number, az: number) => ({ az, el: 0, color: "red" as const, age: 3, dwell: 0, vaz: 0, vel: 0, seed, on: false, first: false, hold: 2 });
+    R.gauges = [mk(1, g.view.az + 0.2), mk(2, g.view.az + 0.3)];
+    step(g, 1);
+    const [a, b] = R.gauges; expect(R.gauges.length).toBe(2);
+    expect(Math.hypot(azd(a.az, b.az), a.el - b.el)).toBeGreaterThan(6);
+  });
+  it("aim assist: a shot hits a rock a few degrees off, and misses one well away", () => {
+    const g = play(); const R = g.run; R.tutorial = false;
+    const w = g.makeWorld({ az: g.view.az + 3.2, el: 0, spawnAt: -1, approach: 1e6, hp: 5 }); w.p = 0.05; w.azv = w.elv = 0; R.worlds = [w];
+    step(g, 0.3, { fire: true }); expect(w.hp).toBeLessThan(5);
+    const v = g.makeWorld({ az: g.view.az + 9, el: 0, spawnAt: -1, approach: 1e6, hp: 5 }); v.p = 0.05; v.azv = v.elv = 0; R.worlds = [v];
+    step(g, 0.3, { fire: true }); expect(v.hp).toBe(5);
+  });
+  it("a crystal out of reach is not pulled", () => {
+    const g = play(); const R = g.run; R.worlds = [];
+    R.crystals = [{ az: g.view.az + 20, el: g.view.el, age: 1, dwell: 0 }];
+    step(g, 0.5); expect(R.crystals[0].locked).toBeFalsy();
+  });
+  it("a bad gauge homes in on the crosshair, its hold fills, and it is taken when full", () => {
+    const g = play(); const R = g.run; R.worlds = [g.makeWorld({ az: 0, el: 0, spawnAt: 9999, approach: 30, hp: 3 })];
+    R.gauges = [{ az: g.view.az + 8, el: 3, color: "red", age: 2, dwell: 0, vaz: 0, vel: 0, seed: 1, on: false, first: false, hold: 2 }];
+    step(g, 1.2); expect(R.gauges[0].on).toBe(true); expect(R.gauges[0].dwell).toBeGreaterThan(0.3);
+    step(g, 1.5); expect(R.gauges.length).toBe(0); expect(R.bad).not.toBeNull();
+  });
+  it("a bad gauge you leave alone times out after GAUGE_LIFE", () => {
+    const g = play(); const R = g.run; R.worlds = [g.makeWorld({ az: 0, el: 0, spawnAt: 9999, approach: 30, hp: 3 })];
+    R.gauges = [{ az: g.view.az + 8, el: 3, color: "blue", age: 0, dwell: 0, vaz: 0, vel: 0, seed: 1, on: false, first: false, hold: 2 }];
+    step(g, 1, { head: undefined }); R.gauges[0].age = 13.5; R.gauges[0].dwell = 0;
+    R.gauges[0].az = (g.view.az + 90) % 360; step(g, 1.0); expect(R.gauges.length).toBe(0); expect(R.bad).toBeNull();
   });
   it("skipIntro goes straight to the game", () => {
     const g = new Game({ seed: 2 }); g.beginIntro(); step(g, 2);
@@ -148,6 +195,21 @@ describe("the confirm command (Enter / Select)", () => {
     const o = play(3); o.run.charge = 0; (o as unknown as { setPhase(p: string): void }).setPhase("over");
     o.update(DT, { ...emptyInput(), commands: ["launch"] });
     expect(o.phase).toBe("play");
+  });
+});
+
+describe("voice controls (glasses with a microphone)", () => {
+  it("a 'pew' continues past the sector-cleared plate, once, and not before the plate accepts it", () => {
+    const g = new Game({ seed: 4, controls: "voice" }); g.beginGame(); g.drain();
+    const R = g.run; R.worlds = []; R.crystals = [];
+    step(g, 0.5); expect(R.mode).toBe("intermission");
+    step(g, 0.5, { fire: true }); expect(R.level).toBe(1); // too soon
+    step(g, 0.2); step(g, 4);
+    step(g, 0.1, { fire: true }); expect(R.level).toBe(2);
+  });
+  it("a normal game does not continue on fire", () => {
+    const g = play(4); const R = g.run; R.worlds = []; R.crystals = [];
+    step(g, 4); step(g, 0.1, { fire: true }); expect(R.level).toBe(1);
   });
 });
 

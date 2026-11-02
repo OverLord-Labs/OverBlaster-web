@@ -86,6 +86,11 @@ export class Draw {
     const c = this.ctx;
     c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
   }
+  /** A capsule (fully rounded ends), as a path. */
+  pill(x: number, y: number, w: number, h: number): void {
+    const c = this.ctx, r = h / 2, q = Math.PI / 2;
+    c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.arc(x + w - r, y + r, r, -q, q); c.lineTo(x + r, y + h); c.arc(x + r, y + r, r, q, 3 * q); c.closePath();
+  }
   logo(cx: number, cy: number, size: number, alpha?: number): void {
     const img = this.logoImg;
     if (!img || !img.complete) return;

@@ -68,13 +68,18 @@ export function drawPlate(d: Draw, game: Game): void {
   const na = ramp(pt, 0.5, 1.0), dy = 12 * (1 - ease(ramp(pt, 0.5, 1.0)));
   d.text("NEXT", 372, 316, 16, CYAN, 500, 4, "left", na); d.text("LVL " + (g.level + 1), 372, 348 + dy, 30, GOLD, 900, 2, "left", na); d.text(levelName(g.level + 1), 372, 372 + dy, 16, "#fff", 500, 3, "left", na);
   const note = levelNote(g.level + 1);
-  if (note) d.text(note, 372, 389 + dy, 12, g.level + 1 >= GAUGE_LEVEL ? BAD.red.col : CYAN, 700, 3, "left", na);
+  if (note) {
+    let ns = 12, sp = 3; // keep it inside the plate (its right edge is 550): smaller, then tighter
+    while (ns > 10 && d.textW(note, ns, 700, sp) > 170) ns--;
+    while (sp > 0.5 && d.textW(note, ns, 700, sp) > 170) sp -= 0.5;
+    d.text(note, 372, 389 + dy, ns, g.level + 1 >= GAUGE_LEVEL ? BAD.red.col : CYAN, 700, sp, "left", na);
+  }
   for (let i = 0; i < CELLS; i++) {
     const pts = d.slanted(124 + i * 15.5, 396, 11, 16, 5);
     if (i < lit) { const al = 0.95 * ramp(pt, 0.3 + i * 0.05, 0.65 + i * 0.05); d.fillPoly(pts, css(tone, al), css(tone, al), 1); }
     else d.fillPoly(pts, null, "rgba(255,255,255,.22)", 1);
   }
   const pa = ramp(pt, COUNT_S + 0.2, COUNT_S + 0.5) * (pt >= ACK_MIN ? 0.7 + 0.3 * Math.sin(pt * 6) : 0.5);
-  d.text(game.controls === "select" ? "PRESS SELECT TO CONTINUE" : "CLICK OR SPACE TO CONTINUE", 320, 452, 18, GOLD, 700, 4, "center", pa);
+  d.text(game.controls === "select" ? "PRESS SELECT TO CONTINUE" : game.controls === "voice" ? "SAY “PEW” TO CONTINUE" : "CLICK OR SPACE TO CONTINUE", 320, 452, 18, GOLD, 700, 4, "center", pa);
 }
 export { BADGE_AT };

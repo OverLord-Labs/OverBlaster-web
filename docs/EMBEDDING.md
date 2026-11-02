@@ -29,6 +29,7 @@ const ob = OverBlaster.mount(element, options);   // element: a container (a can
 | `keyboard` | `"focus"` | `"focus"`: keys only while the game is focused (click it); `"window"`: anywhere; `"off"` |
 | `motion` | `true` | phone orientation steers the view |
 | `soundButton` | `true` | the speaker icon in the top-left corner of the game (hidden when `sound` is `false`); `M` also toggles |
+| `controls` | `"mic"` | how the player fires, which picks the on-screen hints: `"mic"` (say "pew", click or Space), `"select"` (one Select / Enter press, for glasses with no microphone) or `"voice"` (glasses with a microphone: say "pew" to fire and continue; no key or mouse hints). Enter always fires and confirms |
 | `onMuteChange` | none | `(muted: boolean) => void`, called whenever sound is switched on or off |
 | `autoPause` | `true` | pause when the tab is hidden or the game is off screen |
 | `seed` | random | same seed, same levels |

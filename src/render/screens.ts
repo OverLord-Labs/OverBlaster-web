@@ -31,7 +31,7 @@ export function drawTitle(d: Draw, game: Game): void {
   const b = LAUNCH, hov = inBox(b, ptr.x, ptr.y);
   d.fillPoly(d.cutPlate(b.x, b.y, b.x + b.w, b.y + b.h, 14), hov ? "rgba(0,229,255,.18)" : "rgba(0,229,255,.06)", css(CYAN, 0.9), 2);
   d.text("LAUNCH", 320, 532, 28, CYAN, 700, 3, "center");
-  if (game.controls !== "select") d.text("WASD / ARROW KEYS · MOUSE AIMS · CLICK = PEW", 320, 590, 16, CYAN, 500, 3, "center");
+  if (game.controls === "mic") d.text("WASD / ARROW KEYS · MOUSE AIMS · CLICK = PEW", 320, 590, 16, CYAN, 500, 3, "center");
   if (ptr.inside) d.crosshair(ptr.x, ptr.y);
 }
 

@@ -1,6 +1,6 @@
-import { BAD, CHIP_CAPACITY, HIT_FORGIVENESS, TURN_RATE } from "./constants";
+import { BAD, CHIP_CAPACITY, TURN_RATE } from "./constants";
 import type { BadColor } from "./constants";
-import { Game, rockRadius } from "./game";
+import { Game, hitRadius } from "./game";
 import { emptyInput } from "./input";
 import { azd, clamp } from "./math";
 import { Rng } from "./rng";
@@ -57,7 +57,7 @@ export function simulateLevel(o: SimOptions): SimResult {
     off.az = off.az * 0.92 + rng.gauss() * noise * 0.28; off.el = off.el * 0.92 + rng.gauss() * noise * 0.28;
     const da = azd(p.az + off.az, game.view.az), de = p.el + off.el - game.view.el;
     game.view.az = (game.view.az + clamp(da, -maxStep, maxStep) + 360) % 360; game.view.el = clamp(game.view.el + clamp(de, -maxStep, maxStep), -38, 38); // turns no faster than a head can
-    input.fire = g.mode === "playing" && g.worlds.some((w) => !w.dead && g.t >= w.spawnAt && !game.arriving(w) && game.angDist(w.az, w.el) <= rockRadius(w) * HIT_FORGIVENESS);
+    input.fire = g.mode === "playing" && g.worlds.some((w) => !w.dead && g.t >= w.spawnAt && !game.arriving(w) && game.angDist(w.az, w.el) <= hitRadius(w));
     game.update(dt, input);
     for (const e of game.drain()) if (e.type === "zap") { if (e.kind === "bad") badTaken++; else if (e.kind === "eject") gaugesSeen++; }
     minf = Math.min(minf, g.charge / g.capacity);

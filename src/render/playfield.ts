@@ -74,7 +74,7 @@ export function drawPlayfield(d: Draw, game: Game): void {
   for (const c of g.crystals) {
     const p = game.proj(c.az, c.el);
     if (!visible(game, p, 40)) continue;
-    const pul = 1 + 0.12 * Math.sin(clock * 6 + c.az);
+    const pul = (1 + 0.12 * Math.sin(clock * 6 + c.az)) * ease(ramp(c.age, 0, 0.25));
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(clock * 1.5); ctx.scale(pul, pul); d.glow("rgba(255,200,0,.9)", 10); d.fillPoly([[0, -14], [9, 0], [0, 14], [-9, 0]], "#ffc800", "#fff3b0", 1.5); d.noGlow(); ctx.restore();
     if (c.dwell > 0) { ctx.strokeStyle = css(GOLD, 0.9); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, 22, -HALF, -HALF + (Math.PI * 2 * c.dwell) / HARVEST); ctx.stroke(); }
   }
@@ -158,21 +158,21 @@ export function drawPlayfield(d: Draw, game: Game): void {
   if (g.bad) {
     const bu = ramp(clock - g.badT0, 0, 0.4), bk = 0.5 + 0.5 * ease(bu), bcol = g.bad.col;
     ctx.save(); ctx.translate(64, 82); ctx.scale(bk, bk); ctx.translate(-64, -82); ctx.globalAlpha = Math.min(1, bu * 3) * (0.8 + 0.2 * Math.sin(clock * 5)); ctx.fillStyle = css(bcol);
-    ctx.beginPath(); d.roundRect(26, 68, 104, 28, 14); ctx.fill(); drawBadChip(d, clock, 44, 82, 24, [255, 255, 255], 3, 1); d.text("−" + g.bad.cut, 106, 89, 16, "#000", 900, 0, "center"); ctx.restore();
+    ctx.beginPath(); d.pill(26, 68, 104, 28); ctx.fill(); drawBadChip(d, clock, 44, 82, 24, [255, 255, 255], 3, 1); d.text("−" + g.bad.cut, 106, 89, 16, "#000", 900, 0, "center"); ctx.restore();
   } else if (badge > 0) {
     const u = badge, k = 0.4 + 0.6 * ease(u) + 0.25 * Math.sin(u * Math.PI);
     ctx.save(); ctx.translate(64, 82); ctx.scale(k, k); ctx.translate(-64, -82); ctx.globalAlpha = Math.min(1, u * 3); ctx.fillStyle = "#ffc800";
-    ctx.beginPath(); d.roundRect(26, 68, 76, 28, 14); ctx.fill(); d.logo(40, 82, 24); d.text("×2", 76, 89, 17, "#000", 900, 0); ctx.restore();
+    ctx.beginPath(); d.pill(26, 68, 76, 28); ctx.fill(); d.logo(40, 82, 24); d.text("×2", 76, 89, 17, "#000", 900, 0); ctx.restore();
   }
   if (g.mode === "intermission") drawPlate(d, game);
   if (g.tutorial && g.level === 1 && g.mode === "playing") {
     const tt = clock - g.tutT0, p1 = ramp(tt, 2.6, 3.0) * (1 - ramp(tt, 7.0, 7.4)), p2 = ramp(tt, 7.4, 7.8) * (0.7 + 0.3 * Math.sin(tt * 12));
     const ms = ptr.mouse;
-    const sel = game.controls === "select";
-    d.text(ms && !sel ? "AIM WITH THE MOUSE" : "TURN YOUR HEAD", 320, 548, 22, CYAN, 700, 6, "center", p1);
-    if (!sel) d.text(ms ? "WASD OR ARROW KEYS TURN YOUR VIEW" : game.view.sensorLive ? "PHONE MOTION" : "WASD OR ARROW KEYS", 320, 576, 15, CYAN, 500, 5, "center", p1 * 0.8);
-    d.text(sel ? "PRESS SELECT" : ms ? "CLICK TO FIRE" : "SAY “PEW”", 320, 548, 28, GOLD, 900, 6, "center", p2);
-    if (!sel) d.text(ms ? "OR HOLD SPACE" : "HOLD SPACE (OR SAY IT, WITH THE MIC ON)", 320, 576, 15, GOLD, 500, 3, "center", p2 * 0.8);
+    const sel = game.controls === "select", keys = game.controls === "mic";
+    d.text(ms && keys ? "AIM WITH THE MOUSE" : "TURN YOUR HEAD", 320, 548, 22, CYAN, 700, 6, "center", p1);
+    if (keys) d.text(ms ? "WASD OR ARROW KEYS TURN YOUR VIEW" : game.view.sensorLive ? "PHONE MOTION" : "WASD OR ARROW KEYS", 320, 576, 15, CYAN, 500, 5, "center", p1 * 0.8);
+    d.text(sel ? "PRESS SELECT" : ms && keys ? "CLICK TO FIRE" : "SAY “PEW”", 320, 548, 28, GOLD, 900, 6, "center", p2);
+    if (keys) d.text(ms ? "OR HOLD SPACE" : "HOLD SPACE (OR SAY IT, WITH THE MIC ON)", 320, 576, 15, GOLD, 500, 3, "center", p2 * 0.8);
   }
   const bt = clock - g.badT0;
   if (bt >= 0 && bt < 0.8 && g.bad) {

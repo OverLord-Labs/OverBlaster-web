@@ -60,8 +60,8 @@ export const INTRO_CUES: Cue[] = [
 ];
 /** When the drive's riser starts. A story skip that lands after this starts it part-way in. */
 export const RISER_AT = COUNT_AT - 7.4;
-/** Where "skip story" lands: just before the countdown. */
-export const SKIP_STORY_TO = COUNT_AT - 1.2;
+/** Where "skip story" lands: the countdown itself (the "3" is still voiced). */
+export const SKIP_STORY_TO = COUNT_AT;
 
 /** The widescreen side bars part as gameplay starts: from BARS_OPEN_AT, over BARS_OPEN_S seconds. */
 export const BARS_OPEN_AT = 14.2 + SH;

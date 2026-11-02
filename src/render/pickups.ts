@@ -52,6 +52,15 @@ export function drawGauge(d: Draw, game: Game, q: Gauge): void {
   ctx.save(); ctx.setLineDash([7, 7]); ctx.lineDashOffset = -clock * 30; ctx.strokeStyle = css(col, 0.55 + 0.3 * Math.sin(clock * 8)); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, 62, 0, 7); ctx.stroke(); ctx.restore(); // a warning ring: stay out of it
   ctx.save(); ctx.setLineDash([4, 10]); ctx.lineDashOffset = -clock * 40; ctx.strokeStyle = css(col, 0.35); ctx.lineWidth = 2; ctx.beginPath(); const apx = game.aimPx(); ctx.moveTo(p.x, p.y); ctx.lineTo(apx.x, apx.y); ctx.stroke(); ctx.restore(); // its tether to your crosshair
   drawBadChip(d, clock, p.x, p.y, 92, col, q.seed, 1);
-  if (prog > 0) { ctx.strokeStyle = css(col, 1); ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(p.x, p.y, 62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog); ctx.stroke(); }
+  if (!q.first) { // how long it stays: a ring that runs down, with the seconds left
+    const left = clamp(1 - q.age / GAUGE_LIFE, 0, 1);
+    ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = css([255, 255, 255], 0.85); ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(p.x, p.y, 76, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); ctx.stroke(); ctx.restore();
+    d.text(String(Math.ceil(GAUGE_LIFE - q.age)), p.x, p.y + 100, 16, "#fff", 700, 0, "center", 0.85);
+  }
+  if (prog > 0) { // aim held on it: this ring fills, and when it closes the gauge is yours (move off to make it back away)
+    ctx.save(); ctx.globalAlpha = 1; ctx.lineCap = "round";
+    ctx.strokeStyle = css(col, 0.3); ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(p.x, p.y, 62, 0, 7); ctx.stroke();
+    d.glow(css(col), 12); ctx.strokeStyle = "#fff"; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(p.x, p.y, 62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog); ctx.stroke(); d.noGlow(); ctx.restore();
+  }
   ctx.restore();
 }

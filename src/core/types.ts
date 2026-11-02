@@ -19,7 +19,7 @@ export interface Rock {
   warned?: boolean;
 }
 
-export interface Crystal { az: number; el: number; age: number; dwell: number }
+export interface Crystal { az: number; el: number; age: number; dwell: number; locked?: boolean; pullT?: number }
 /** The BMS chip and the battery wings: collected by holding your aim on them. */
 export interface Pickup { az: number; el: number; age: number; dwell: number; onTarget: boolean }
 export interface Gauge {

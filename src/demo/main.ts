@@ -6,10 +6,16 @@ const stage = document.getElementById("stage")!;
 const $ = (id: string) => document.getElementById(id) as HTMLButtonElement;
 // #...&seed=N makes a run reproducible (used by tools/compare_web.py in the Raven repo to line the two games up)
 const seedFlag = /[#&]seed=(\d+)/.exec(location.hash);
-// ?glasses (or #glasses): the Meta Ray-Ban Display look: no controls under the game or in its corner, hints worded for Select (no mic, no cursor)
-const glasses = /[?#&]glasses\b/.test(location.search + location.hash);
-const ob = OverBlaster.mount(stage, { assetsUrl: "./", keyboard: "window", ...(glasses ? { controls: "select", soundButton: false } : {}), onMuteChange: (m) => { $("mute").textContent = "Sound: " + (m ? "off" : "on"); }, seed: seedFlag ? Number(seedFlag[1]) : undefined });
+// ?glasses (or #glasses): the glasses look: no controls under the game or in its corner, no key or mouse hints, fired by saying "pew" (the mic comes on with your first click or key).
+// ?glasses&select: the Meta Ray-Ban Display Web App, which has no microphone: hints worded for Select.
+const flag = (n: string): boolean => new RegExp("[?#&]" + n + "\\b").test(location.search + location.hash);
+const glasses = flag("glasses"), select = glasses && flag("select");
+const ob = OverBlaster.mount(stage, { assetsUrl: "./", keyboard: "window", ...(glasses ? { controls: select ? "select" : "voice", soundButton: false } : {}), onMuteChange: (m) => { $("mute").textContent = "Sound: " + (m ? "off" : "on"); }, seed: seedFlag ? Number(seedFlag[1]) : undefined });
 
+if (glasses && !select) { // a browser only lets the page listen after a gesture: take the first one
+  const arm = (): void => { removeEventListener("pointerdown", arm); removeEventListener("keydown", arm); void ob.toggleMic(); };
+  addEventListener("pointerdown", arm); addEventListener("keydown", arm);
+}
 $("mute").addEventListener("click", () => ob.setMuted(!ob.muted));
 $("mic").addEventListener("click", async () => {
   const r = await ob.toggleMic();

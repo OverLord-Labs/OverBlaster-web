@@ -1,6 +1,6 @@
 import {
-  ACK_MIN, BAD, MAX_ASPECT, BADGE_AT, CELLS, CHIP_CAPACITY, CHIP_DRAIN, CHIP_HOLD, CHIP_LEVEL, CENTER, COUNT_S, CRITICAL, CRYSTAL_RADIUS, CRYSTAL_VALUE,
-  EL_LIMIT, FIRST_HOLD, GAUGE_HOLD, GAUGE_LEVEL, GAUGE_LIFE, GAUGE_RADIUS, GOLD, HARVEST, HIT_FORGIVENESS, LOADS, LOW, MAX_LEVEL, PINK,
+  ACK_MIN, BAD, MAX_ASPECT, BADGE_AT, CELLS, CHIP_CAPACITY, CHIP_DRAIN, CHIP_HOLD, CHIP_LEVEL, CENTER, COUNT_S, CRITICAL, CRYSTAL_DELAY, CRYSTAL_GRAVITY, CRYSTAL_PULL, CRYSTAL_RADIUS, CRYSTAL_VALUE,
+  EL_LIMIT, FIRST_HOLD, GAUGE_HOLD, GAUGE_LEVEL, GAUGE_LIFE, GAUGE_RADIUS, GAUGE_SPACING, GOLD, HARVEST, HIT_FORGIVENESS, HIT_MIN, LOADS, LOW, MAX_LEVEL, PINK,
   PPD, RESTORE_AFTER, RESTORE_ODDS, SETTLE, SHOT_COOLDOWN, SHOT_COST, SPAWN_SPREAD, START_CHARGE, W, WING_HOLD, WING_LEVELS, WING_RADIUS,
 } from "./constants";
 import type { BadColor } from "./constants";
@@ -20,14 +20,16 @@ export interface GameOptions {
   seed?: number;
   /** Override the difficulty curve (how much shooting a level asks of you at level 4 and level 42). */
   loads?: [number, number];
-  /** How the player fires, for the on-screen hints: "mic" (say "pew", or click / Space) or "select" (one Select / Enter / Space press, on glasses with no microphone). Default "mic". */
-  controls?: "mic" | "select";
+  /** How the player fires, for the on-screen hints: "mic" (say "pew", or click / Space) "select" (one Select / Enter / Space press, on glasses with no microphone) or "voice" (glasses with a microphone: say "pew" to fire and to continue; no key, mouse or button hints). Default "mic". */
+  controls?: "mic" | "select" | "voice";
 }
 
 const ENTRY_SPOTS: [number, number][] = [[-9, 3], [8, 6], [-3, -6], [11, -4]]; // where the first rocks come to rest: all inside the window, none on top of another
 
 /** Angular radius in degrees: a rock grows slowly, then fast; at impact it is 8 degrees, a diameter of 53% of the screen. */
 export const rockRadius = (w: Rock): number => (1.0 + 1.8 * w.p + 5.2 * Math.pow(w.p, 4)) * (w.carrier ? 1.08 : 1);
+/** How far from a rock's centre a shot still hits it, in degrees (the aim assist). */
+export const hitRadius = (w: Rock): number => Math.max(HIT_MIN, rockRadius(w) * HIT_FORGIVENESS);
 
 /**
  * The whole game, with no DOM, canvas, audio or timer in it.
@@ -43,8 +45,9 @@ export class Game {
   rng: Rng;
   loads: [number, number];
   /** How the player fires: picks the wording of the on-screen hints. */
-  readonly controls: "mic" | "select";
+  readonly controls: "mic" | "select" | "voice";
   input: InputFrame = emptyInput();
+  private wasFiring = false;
   intro: IntroState = { t: 0, fired: new Set(), game: false };
   run!: Run;
   over: { t: number } | null = null;
@@ -219,6 +222,14 @@ export class Game {
     } else { g.charge = Math.max(0, g.charge - 0.3 * g.capacity); this.callout("ANOTHER BAD GAUGE", "YOUR BATTERY JUST TOOK A HIT", b.col, 3.5); }
     g.fx.push({ k: "glitch", az: gz.az, el: gz.el, t: 0, col: b.col });
   }
+  /** Move a thing toward the crosshair by up to `speed` degrees a second. */
+  private pull(o: { az: number; el: number }, speed: number, dt: number): void {
+    const ap = this.aimPx(), p = this.proj(o.az, o.el), cs = Math.cos((o.el * Math.PI) / 180);
+    const dx = (ap.x - p.x) / PPD, dy = -(ap.y - p.y) / PPD, dist = Math.hypot(dx, dy);
+    if (dist < 1e-6) return;
+    const step = Math.min(dist, speed * dt);
+    o.az = wrap360(o.az + (step * dx) / dist / Math.max(0.3, cs)); o.el = clamp(o.el + (step * dy) / dist, -24, 24);
+  }
   private shoot(): void {
     const g = this.run;
     g.charge -= SHOT_COST; g.flash = 0.09; g.tutorial = false;
@@ -226,7 +237,7 @@ export class Game {
     for (const w of g.worlds) {
       if (w.dead || g.t < w.spawnAt || this.arriving(w)) continue;
       const d = this.angDist(w.az, w.el);
-      if (d <= rockRadius(w) * HIT_FORGIVENESS && d < bd) { best = w; bd = d; }
+      if (d <= hitRadius(w) && d < bd) { best = w; bd = d; }
     }
     let tgt: { x: number; y: number } = this.aimPx();
     if (best) tgt = this.proj(best.az, best.el); // shots pass straight through a bad gauge: you can only keep your aim off it
@@ -286,7 +297,7 @@ export class Game {
     else if (c === "flipPitch") this.view.flipPitch();
   }
   /** Is the in-canvas "skip story" button showing? (Not in "select" mode, where nothing can point at it.) */
-  storyBtnVisible(): boolean { return this.controls !== "select" /* no pointer to press it with: Back / Escape skips */ && this.phase === "intro" && !this.intro.game && this.intro.t > 0.9 && this.intro.t < COUNT_AT - 1.6; }
+  storyBtnVisible(): boolean { return this.controls === "mic" /* glasses have no pointer to press it with: Back / Escape skips */ && this.phase === "intro" && !this.intro.game && this.intro.t > 0.9 && this.intro.t < COUNT_AT - 1.6; }
   /** Is a skip control worth offering right now (story or countdown still running)? */
   canSkipIntro(): boolean { return this.phase === "intro" && this.intro.t < GAME_AT; }
 
@@ -295,7 +306,7 @@ export class Game {
     const I = this.intro;
     if (this.phase !== "intro" || I.game || I.t >= SKIP_STORY_TO) return;
     const needRiser = I.t < RISER_AT;
-    INTRO_CUES.forEach((c, i) => { if (c.at < SKIP_STORY_TO) I.fired.add(i); });
+    INTRO_CUES.forEach((c, i) => { if (c.at < SKIP_STORY_TO - 0.1) I.fired.add(i); }); // not the "three" that is just before it
     this.say([]); this.emit({ type: "alarm", on: false });
     if (needRiser) this.emit({ type: "sfx", name: "warp_charge", gain: 0.9, offset: SKIP_STORY_TO - RISER_AT, tag: "riser" });
     I.t = SKIP_STORY_TO;
@@ -315,6 +326,8 @@ export class Game {
     this.input = input;
     for (const c of input.commands) this.command(c);
     for (const p of input.presses) this.press(p.x, p.y);
+    if (this.controls === "voice" && input.fire && !this.wasFiring && (this.phase !== "over" || (this.over?.t ?? 0) > 1.5)) this.command("launch"); // a "pew" also continues past a plate and retries
+    this.wasFiring = input.fire;
     this.clock += dt;
     if (this.phase === "intro") { this.updateIntro(dt); if (!this.intro.game) return; }
     else if (this.phase === "over") { if (this.over) this.over.t += dt; return; }
@@ -359,9 +372,18 @@ export class Game {
     }
     g.cool = Math.max(g.cool - dt, -Math.min(dt, SHOT_COOLDOWN));
     if (g.mode === "playing" && input.fire && g.charge >= SHOT_COST && g.cool <= 0) { this.shoot(); g.cool += SHOT_COOLDOWN; }
-    for (const c of g.crystals) { c.age += dt; c.el = Math.max(-24, c.el - 0.6 * dt); const on = this.angDist(c.az, c.el) <= CRYSTAL_RADIUS; c.dwell = on ? c.dwell + dt : Math.max(0, c.dwell - dt * 2); }
+    for (const c of g.crystals) {
+      c.age += dt;
+      const ready = c.age >= CRYSTAL_DELAY; // for a moment after the rock breaks you just see the crystals
+      if (!c.locked) { // a crystal sinks, until your aim gets close: then gravity takes it and it is yours, wherever you look next
+        c.el = Math.max(-24, c.el - 0.6 * dt);
+        if (ready && g.mode === "playing" && this.angDist(c.az, c.el) <= CRYSTAL_GRAVITY) { c.locked = true; c.pullT = 0; }
+      }
+      if (c.locked) { c.pullT = (c.pullT || 0) + dt; this.pull(c, CRYSTAL_PULL * (1 + 1.5 * c.pullT), dt); }
+      const on = ready && this.angDist(c.az, c.el) <= CRYSTAL_RADIUS; c.dwell = on ? c.dwell + dt : Math.max(0, c.dwell - dt * 2);
+    }
     g.crystals = g.crystals.filter((c) => {
-      if (c.age > 9) return false;
+      if (c.age > 9 && !c.locked) return false;
       if (c.dwell >= HARVEST) { g.charge = Math.min(g.capacity, g.charge + CRYSTAL_VALUE); g.score += 10; this.sfx("crystal", 0.8); g.fx.push({ k: "ping", az: c.az, el: c.el, t: 0 }); return false; }
       return true;
     });
@@ -399,6 +421,13 @@ export class Game {
       q.el = clamp(q.el + q.vel * dt + (dist > 1e-6 ? (step * dy) / dist : 0), -24, 24);
       q.on = g.mode === "playing" && this.angDist(q.az, q.el) <= GAUGE_RADIUS;
       q.dwell = q.on ? q.dwell + dt : Math.max(0, q.dwell - dt * 1.5);
+    }
+    for (let i = 0; i < g.gauges.length; i++) for (let j = i + 1; j < g.gauges.length; j++) { // gauges keep apart: whichever is further from your aim gives way
+      const a = g.gauges[i], b = g.gauges[j], dx = azd(b.az, a.az) * Math.cos(((a.el + b.el) / 2 * Math.PI) / 180), dy = b.el - a.el, d = Math.hypot(dx, dy);
+      if (d >= GAUGE_SPACING) continue;
+      const m = this.angDist(a.az, a.el) > this.angDist(b.az, b.el) ? a : b, sgn = m === b ? 1 : -1, ang = d > 1e-6 ? 0 : (m.seed * 2.4) % 6.283;
+      const ux = d > 1e-6 ? (sgn * dx) / d : Math.cos(ang), uy = d > 1e-6 ? (sgn * dy) / d : Math.sin(ang), push = (GAUGE_SPACING - d) * Math.min(1, 6 * dt);
+      m.az = wrap360(m.az + (ux * push) / Math.max(0.3, Math.cos((m.el * Math.PI) / 180))); m.el = clamp(m.el + uy * push, -24, 24);
     }
     for (const q of g.gauges.slice()) { if (q.dwell >= q.hold) this.takeBad(q); else if (q.age > GAUGE_LIFE && !q.first) g.gauges.splice(g.gauges.indexOf(q), 1); }
     const frac = g.charge / g.capacity;

@@ -33,7 +33,11 @@ export const CHIP_CAPACITY = 200;
 // ---- aiming and harvesting ----
 export const HARVEST = 0.3; // seconds of aim on a crystal
 export const CRYSTAL_RADIUS = 3.0; // degrees
-export const HIT_FORGIVENESS = 1.5; // a shot lands within 1.5 x a rock's radius
+export const CRYSTAL_DELAY = 0.5; // seconds after a rock breaks before its crystals can be taken: time to see them
+export const CRYSTAL_GRAVITY = 4.5; // degrees: aim this close to a crystal and it is yours, it flies to your crosshair on its own
+export const CRYSTAL_PULL = 14; // degrees a second it flies at, speeding up
+export const HIT_FORGIVENESS = 2.0; // a shot lands within 2 x a rock's radius...
+export const HIT_MIN = 3.5; // ...and never closer than this, so even a far, small rock is easy to hit (degrees)
 export const SPAWN_SPREAD = 45;
 export const POINTER_RING = 250; // px: how far from the centre an off-screen arrow sits
 export const CRITICAL = 0.72; // a rock past 72% of its way to you is critically close
@@ -56,6 +60,7 @@ export const GAUGE_HOLD = 2.0;
 export const FIRST_HOLD = 4.0;
 export const GAUGE_RADIUS = 3.5;
 export const GAUGE_LIFE = 14;
+export const GAUGE_SPACING = 8; // degrees: gauges keep at least this far from each other, so they don't stack
 export const RESTORE_ODDS = 0.15;
 export const RESTORE_AFTER = 7;
 /** Red ones cut capacity by 70%, blue ones by 80%; either one takes the 2x away. */
