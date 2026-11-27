@@ -1,4 +1,5 @@
 import type { GameEvent } from "./events";
+import { ease, ramp } from "./math";
 
 /**
  * The story intro, as data: the narrator's lines, when things happen, and what sounds go with them.
@@ -66,3 +67,11 @@ export const SKIP_STORY_TO = COUNT_AT;
 /** The widescreen side bars part as gameplay starts: from BARS_OPEN_AT, over BARS_OPEN_S seconds. */
 export const BARS_OPEN_AT = 14.2 + SH;
 export const BARS_OPEN_S = 1.4;
+
+/** How far the story shows beyond the central square on a wide screen (the rest opens with the bars at BARS_OPEN_AT). */
+export const STORY_OPEN = 0.55;
+/** How open the side bars are at intro time `t`, 0 (square) to 1 (the whole screen): part way for the story, all the way for the game. */
+export function introOpen(t: number): number {
+  const story = STORY_OPEN * ease(ramp(t, 0.3, 1.8)), game = ease(ramp(t, BARS_OPEN_AT, BARS_OPEN_AT + BARS_OPEN_S));
+  return story + (1 - story) * game;
+}

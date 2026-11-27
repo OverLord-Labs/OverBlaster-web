@@ -7,8 +7,8 @@ import type { BadColor } from "./constants";
 import type { GameEvent, Phase } from "./events";
 import { emptyInput } from "./input";
 import type { InputFrame } from "./input";
-import { COUNT_AT, GAME_AT, INTRO_CUES, INTRO_END, RISER_AT, SKIP_STORY_TO } from "./intro";
-import { LAUNCH, RETRY, SKIPS, TOTITLE, inBox } from "./layout";
+import { COUNT_AT, GAME_AT, INTRO_CUES, INTRO_END, RISER_AT, SKIP_STORY_TO, introOpen } from "./intro";
+import { LAUNCH, RETRY, TOTITLE, inBox, skipsBox } from "./layout";
 import { crystalsFor, gaugeChase, levelPlan, levelSay } from "./levels";
 import { azd, clamp, ramp, wrap360 } from "./math";
 import { Rng } from "./rng";
@@ -22,6 +22,8 @@ export interface GameOptions {
   loads?: [number, number];
   /** How the player fires, for the on-screen hints: "mic" (say "pew", or click / Space) "select" (one Select / Enter / Space press, on glasses with no microphone) or "voice" (glasses with a microphone: say "pew" to fire and to continue; no key, mouse or button hints). Default "mic". */
   controls?: "mic" | "select" | "voice";
+  /** Draw a "skip story" button the player can click or tap during the intro. Always on for "mic"; for "voice" and "select" it is off unless set (those are for glasses, which have no pointer). */
+  skipButton?: boolean;
 }
 
 const ENTRY_SPOTS: [number, number][] = [[-9, 3], [8, 6], [-3, -6], [11, -4]]; // where the first rocks come to rest: all inside the window, none on top of another
@@ -46,6 +48,7 @@ export class Game {
   loads: [number, number];
   /** How the player fires: picks the wording of the on-screen hints. */
   readonly controls: "mic" | "select" | "voice";
+  readonly skipButton: boolean;
   input: InputFrame = emptyInput();
   private wasFiring = false;
   intro: IntroState = { t: 0, fired: new Set(), game: false };
@@ -55,6 +58,11 @@ export class Game {
   launching = false;
   /** Extra visible width on each side of the 640 px square, in logical px (0 on a square screen). Set with setAspect(). */
   ox = 0;
+  /** Room the HUD leaves at the left edge of a wide screen, for a host control drawn there (the speaker button). */
+  hudInset = 0;
+  /** The part of each edge of a wide screen the device hides (rounded corners, the notch), in logical px. The corner HUD keeps clear of it. */
+  safeL = 0;
+  safeR = 0;
   /** Frozen games ignore update(): used by screenshot and debug tools. */
   frozen = false;
   private events: GameEvent[] = [];
@@ -63,6 +71,7 @@ export class Game {
     this.rng = new Rng(opts.seed ?? Math.floor(Math.random() * 4294967296));
     this.loads = opts.loads ?? LOADS;
     this.controls = opts.controls ?? "mic";
+    this.skipButton = !!opts.skipButton;
   }
 
   // ---------------------------------------------------------------- events
@@ -276,7 +285,7 @@ export class Game {
 
   // ---------------------------------------------------------------- input
   private press(x: number, y: number): void {
-    if (this.phase === "intro" && !this.intro.game) { if (this.storyBtnVisible() && inBox(SKIPS, x, y)) this.skipStory(); return; }
+    if (this.phase === "intro" && !this.intro.game) { if (this.storyBtnVisible() && inBox(this.skipBox(), x, y)) this.skipStory(); return; }
     if (this.phase === "title") { this.launch(); return; }
     if (this.phase === "play" && this.run.mode === "intermission") { if (this.clock - this.run.plateAt >= ACK_MIN) this.acknowledge(); return; }
     if (this.phase === "over") {
@@ -297,7 +306,9 @@ export class Game {
     else if (c === "flipPitch") this.view.flipPitch();
   }
   /** Is the in-canvas "skip story" button showing? (Not in "select" mode, where nothing can point at it.) */
-  storyBtnVisible(): boolean { return this.controls === "mic" /* glasses have no pointer to press it with: Back / Escape skips */ && this.phase === "intro" && !this.intro.game && this.intro.t > 0.9 && this.intro.t < COUNT_AT - 1.6; }
+  /** Where the "skip story" button is now: the story's side bars are part way open. */
+  skipBox() { return skipsBox(this.ox * introOpen(this.intro.t)); }
+  storyBtnVisible(): boolean { return (this.controls === "mic" || this.skipButton) /* glasses have no pointer to press it with: Back / Escape skips */ && this.phase === "intro" && !this.intro.game && this.intro.t > 0.9 && this.intro.t < COUNT_AT - 1.6; }
   /** Is a skip control worth offering right now (story or countdown still running)? */
   canSkipIntro(): boolean { return this.phase === "intro" && this.intro.t < GAME_AT; }
 

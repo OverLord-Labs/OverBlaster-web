@@ -10,7 +10,7 @@ import { onScreen } from "../core/view";
 const visible = (game: { ox: number }, p: { x: number; y: number }, m: number): boolean => onScreen(p, m, game.ox);
 import { drawPointer, drawRockArrows } from "./arrows";
 import { css, Draw } from "./draw";
-import { drawAward, drawCallout, drawPlate } from "./hud";
+import { drawAward, drawCallout, drawPlate, hudShift } from "./hud";
 import { drawBadChip, drawChip, drawGauge } from "./pickups";
 import { drawCells, wingIcon } from "./sprites";
 
@@ -149,12 +149,17 @@ export function drawPlayfield(d: Draw, game: Game): void {
   for (const f of g.floaters) { const p = game.proj(f.az, f.el); d.text(f.s, p.x, p.y - 20 - 40 * ease(f.t / 1.2), 28, GOLD, 900, 0, "center", 1 - f.t / 1.2); }
   drawAward(d, game);
   const frac = clamp(g.charge / g.capacity, 0, 1), tone = frac < LOW ? PINK : g.bad ? g.bad.col : g.chipCollected ? GOLD : CYAN, aT = g.awardT0 != null ? clock - g.awardT0 : null;
+  const hs = hudShift(d, game);
+  ctx.save(); ctx.translate(hs.l, 0);
   drawCells(d, clock, frac, tone, true, 1);
   ctx.strokeStyle = css(tone, 0.5); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(164, 8); ctx.lineTo(164, 62); ctx.stroke();
   d.text("LVL " + g.level, 176, 44, 26, tone, 700, 2);
+  ctx.restore(); ctx.save(); ctx.translate(hs.r, 0);
   for (let wk = 0; wk < 2; wk++) wingIcon(d, 364 + wk * 46, 35, 0.3, g.wings > wk ? 0.9 : 0.12, g.wings <= wk, -0.15, true);
   d.text(String(g.score), 535, 40, 28, "#fff", 700, 0, "right");
+  ctx.restore();
   const badge = aT != null ? ramp(aT, BADGE_AT, BADGE_AT + 0.5) : g.chipCollected ? 1 : 0;
+  ctx.save(); ctx.translate(hs.l, 0);
   if (g.bad) {
     const bu = ramp(clock - g.badT0, 0, 0.4), bk = 0.5 + 0.5 * ease(bu), bcol = g.bad.col;
     ctx.save(); ctx.translate(64, 82); ctx.scale(bk, bk); ctx.translate(-64, -82); ctx.globalAlpha = Math.min(1, bu * 3) * (0.8 + 0.2 * Math.sin(clock * 5)); ctx.fillStyle = css(bcol);
@@ -164,6 +169,7 @@ export function drawPlayfield(d: Draw, game: Game): void {
     ctx.save(); ctx.translate(64, 82); ctx.scale(k, k); ctx.translate(-64, -82); ctx.globalAlpha = Math.min(1, u * 3); ctx.fillStyle = "#ffc800";
     ctx.beginPath(); d.pill(26, 68, 76, 28); ctx.fill(); d.logo(40, 82, 24); d.text("×2", 76, 89, 17, "#000", 900, 0); ctx.restore();
   }
+  ctx.restore();
   if (g.mode === "intermission") drawPlate(d, game);
   if (g.tutorial && g.level === 1 && g.mode === "playing") {
     const tt = clock - g.tutT0, p1 = ramp(tt, 2.6, 3.0) * (1 - ramp(tt, 7.0, 7.4)), p2 = ramp(tt, 7.4, 7.8) * (0.7 + 0.3 * Math.sin(tt * 12));

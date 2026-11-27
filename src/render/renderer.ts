@@ -1,8 +1,7 @@
 import { CYAN, W } from "../core/constants";
-import { BARS_OPEN_AT, BARS_OPEN_S } from "../core/intro";
-import { ease, ramp } from "../core/math";
+import { introOpen } from "../core/intro";
 import type { Game } from "../core/game";
-import { SKIPS, inBox, soundBox } from "../core/layout";
+import { inBox, soundBox } from "../core/layout";
 import { Draw } from "./draw";
 import { drawPlayfield } from "./playfield";
 import { drawOver, drawTitle } from "./screens";
@@ -34,11 +33,13 @@ export class Renderer {
 
   private open = -1; // how far the widescreen side bars have parted (0 closed, 1 open); -1 until the first frame
   private lastNow = 0;
+  private prevOpen = 0;
+  private edge = 0; // how visible the thin lines at the bars' edges are: only while they move
 
   /** How open the side bars should be: gameplay uses the whole width; the title, story and game-over screens sit in the central square. */
   private barsTarget(game: Game): number {
     if (game.phase === "play") return 1;
-    if (game.phase === "intro") return ease(ramp(game.intro.t, BARS_OPEN_AT, BARS_OPEN_AT + BARS_OPEN_S));
+    if (game.phase === "intro") return introOpen(game.intro.t);
     return 0;
   }
 
@@ -49,11 +50,13 @@ export class Renderer {
     const tgt = this.barsTarget(game);
     if (this.open < 0 || game.phase === "intro") this.open = tgt; // the intro's bars follow its timeline exactly; elsewhere they glide
     else this.open += Math.max(-dt / 0.9, Math.min(dt / 1.2, tgt - this.open));
+    this.edge += ((dt > 0 && Math.abs(this.open - this.prevOpen) / dt > 0.02 ? 1 : 0) - this.edge) * Math.min(1, dt * 10); this.prevOpen = this.open;
     const ox = Math.max(0, (this.canvas.width / k - W) / 2); // canvas px beyond the square on each side, in logical px
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#000"; ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(k, 0, 0, k, k * ox, 0);
     // everything is drawn inside the window the bars leave open, so nothing can show outside them while they part
     const bw = ox * (1 - this.open);
+    d.ox = ox; d.vx = ox - bw;
     ctx.save(); ctx.beginPath(); ctx.rect(-ox + bw, 0, W + 2 * (ox - bw), W); ctx.clip();
     switch (game.phase) {
       case "title": drawTitle(d, game); break;
@@ -70,7 +73,7 @@ export class Renderer {
     const ptr = game.input.pointer;
     const hoverSound = !!ui && ptr.inside && inBox(soundBox(ox), ptr.x, ptr.y);
     if (ui) drawSoundIcon(d, ox, ui.muted, hoverSound); // a host control on the very top layer, over the bars too
-    this.canvas.style.cursor = hoverSound ? "pointer" : game.storyBtnVisible() ? (inBox(SKIPS, ptr.x, ptr.y) ? "pointer" : "default") : "none";
+    this.canvas.style.cursor = hoverSound ? "pointer" : game.storyBtnVisible() ? (inBox(game.skipBox(), ptr.x, ptr.y) ? "pointer" : "default") : "none";
   }
 
   /** The theatrical bars: black on both sides of the square, parting outward as the open amount rises. */
@@ -79,7 +82,7 @@ export class Renderer {
     const ctx = this.draw.ctx, bw = ox * (1 - this.open);
     if (bw < 0.5) return;
     ctx.fillStyle = "#000"; ctx.fillRect(-ox - 2, -2, bw + 2, W + 4); ctx.fillRect(W + ox - bw, -2, bw + 2, W + 4);
-    if (this.open > 0) { ctx.fillStyle = "rgba(0,229,255,.35)"; ctx.fillRect(-ox + bw, 0, 1.5, W); ctx.fillRect(W + ox - bw - 1.5, 0, 1.5, W); } // a thin edge while they move
+    if (this.edge > 0.02) { ctx.fillStyle = `rgba(0,229,255,${0.35 * this.edge})`; ctx.fillRect(-ox + bw, 0, 1.5, W); ctx.fillRect(W + ox - bw - 1.5, 0, 1.5, W); } // a thin edge while they move
   }
 
   destroy(): void {

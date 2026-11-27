@@ -5,6 +5,7 @@ import { Game } from "./core/game";
 import type { GameOptions } from "./core/game";
 import { inBox, soundBox } from "./core/layout";
 import { AudioEngine } from "./platform/audio";
+import { W } from "./core/constants";
 import { InputController } from "./platform/input";
 import type { KeyboardScope } from "./platform/input";
 import { Mic } from "./platform/mic";
@@ -93,12 +94,27 @@ export class OverBlaster {
     this.raf = requestAnimationFrame((t) => this.frame(t));
   }
 
+  private frames = 0;
+  private safeProbe: HTMLElement | null = null;
+  /** How much of the canvas's left and right edges the device covers (a notch, rounded corners), from the page's safe-area insets. */
+  private measureSafeArea(): void {
+    if (!this.safeProbe) {
+      const p = document.createElement("div");
+      p.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)";
+      document.body.appendChild(p); this.safeProbe = p;
+    }
+    const cs = getComputedStyle(this.safeProbe), r = this.canvas.getBoundingClientRect(), k = W / Math.max(1, r.height);
+    this.game.safeL = Math.max(0, parseFloat(cs.paddingLeft) - r.left) * k;
+    this.game.safeR = Math.max(0, parseFloat(cs.paddingRight) - (innerWidth - r.right)) * k;
+  }
+
   // ---- the loop ----
   private frame(now: number): void {
     this.raf = requestAnimationFrame((t) => this.frame(t));
     const dt = Math.min(0.05, (now - this.last) / 1000 || 0.016);
     this.last = now;
     this.game.setAspect(this.canvas.clientWidth / Math.max(1, this.canvas.clientHeight));
+    if ((this.frames++ & 15) === 0) this.measureSafeArea();
     if (this.running) {
       this.mic.update(dt, !!this.audio?.isSpeaking());
       this.input.micFire = this.mic.held;
@@ -106,7 +122,9 @@ export class OverBlaster {
       this.audio?.tick();
     } else this.input.frame(); // keep draining so a pause does not queue clicks
     for (const e of this.game.drain()) this.dispatch(e);
-    this.renderer.render(this.game, this.audio && this.opts.soundButton !== false ? { muted: this.muted } : null);
+    const ui = this.audio && this.opts.soundButton !== false ? { muted: this.muted } : null;
+    this.game.hudInset = ui ? 44 : 0;
+    this.renderer.render(this.game, ui);
   }
 
   private dispatch(e: ReturnType<Game["drain"]>[number]): void {
@@ -161,6 +179,7 @@ export class OverBlaster {
   get phase(): Game["phase"] { return this.game.phase; }
   /** Stop everything and remove what mount() added. */
   destroy(): void {
+    this.safeProbe?.remove();
     cancelAnimationFrame(this.raf);
     document.removeEventListener("visibilitychange", this.onVis);
     this.io?.disconnect();

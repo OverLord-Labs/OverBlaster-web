@@ -30,6 +30,10 @@ const ROCK: number[] = [];
  */
 export class Draw {
   clockT = 0;
+  /** Extra width on each side of the 640 px square that the canvas has (the renderer sets it every frame). */
+  ox = 0;
+  /** How much of that is open to see right now: the side bars cover the rest. Anything pinned to the edges goes at -vx and 640 + vx. */
+  vx = 0;
   constructor(public ctx: CanvasRenderingContext2D, public logoImg: HTMLImageElement | null = null) {}
 
   textW(s: string, size: number, weight?: number, sp?: number): number {
@@ -108,7 +112,12 @@ export class Draw {
     for (const s of STARS) {
       const x = (((s.x - t * driftX * s.z) % W) + W) % W, y = (((s.y + t * driftY * s.z) % W) + W) % W;
       c.globalAlpha = base * alpha * (0.35 + 0.65 * Math.abs(Math.sin(t * 0.8 + s.ph))) * s.z;
-      c.fillStyle = "#fff"; c.beginPath(); c.arc(x, y, s.r, 0, 7); c.fill();
+      c.fillStyle = "#fff";
+      for (let k = -1; k <= 1; k++) { // the field repeats every 640 px, so a wide screen is full of stars too
+        const xs = x + k * W;
+        if (xs < -this.ox - 4 || xs > W + this.ox + 4) continue;
+        c.beginPath(); c.arc(xs, y, s.r, 0, 7); c.fill();
+      }
     }
     c.globalAlpha = base;
   }

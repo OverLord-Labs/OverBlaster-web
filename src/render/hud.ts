@@ -4,6 +4,12 @@ import { levelName, levelNote } from "../core/levels";
 import { clamp, ease, lerp, ramp } from "../core/math";
 import { css, Draw } from "./draw";
 
+/** How far the corner HUD moves out on a wide screen: the battery and level to the left edge, the wings and score to the right. */
+export function hudShift(d: Draw, game: Game): { l: number; r: number } {
+  const vx = d.vx, kl = Math.min(1, vx / 44), kr = Math.min(1, vx / 90);
+  return { l: -vx + Math.max(game.hudInset, game.safeL + 8) * kl, r: vx + (90 - game.safeR) * kr };
+}
+
 export function drawCallout(d: Draw, game: Game): void {
   const co = game.run.callout, ctx = d.ctx;
   if (!co) return;
@@ -28,7 +34,7 @@ export function drawAward(d: Draw, game: Game): void {
     const s0 = 0.1 + i * 0.1, u = ease(ramp(t, s0, s0 + 1.0)), a = (i / 10) * 6.283, k = ramp(t, 0, 0.3), al = ramp(t, 0, 0.1) * (1 - ramp(t, s0 + 1.0, s0 + 1.2));
     if (al <= 0) continue;
     const bx = o.x + Math.cos(a) * 60 * k, by = o.y + Math.sin(a) * 60 * k;
-    ctx.fillStyle = css(CYAN, al); ctx.beginPath(); ctx.arc(lerp(bx, 31 + i * 12.5, u), lerp(by, 20, u), 5, 0, 7); ctx.fill();
+    ctx.fillStyle = css(CYAN, al); ctx.beginPath(); ctx.arc(lerp(bx, 31 + i * 12.5 + hudShift(d, game).l, u), lerp(by, 20, u), 5, 0, 7); ctx.fill();
   }
   // the medallion and the callout
   const grow = ease(ramp(t, BUBBLE_IN, BUBBLE_IN + 0.5)), fold = ease(ramp(t, BUBBLE_FOLD, BUBBLE_FOLD + 0.8)), sc = grow * (1 - fold);

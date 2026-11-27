@@ -1,7 +1,7 @@
 import { CYAN, PINK, W } from "../core/constants";
 import type { Game } from "../core/game";
 import { COUNT_AT, COUNT_STEP, EV, INTRO_LINES, JUMP_AT, PARTS, SH } from "../core/intro";
-import { SKIPS, inBox } from "../core/layout";
+import { inBox } from "../core/layout";
 import { TAU, clamp, ease, lerp, ramp } from "../core/math";
 import { Rng, srng } from "../core/rng";
 import { css, Draw } from "./draw";
@@ -23,7 +23,9 @@ const DEBRIS: Debris[] = [];
 }
 
 // the bridge: the big front window and the two side panes (where the wings are)
-const WIN: Pt[][] = [[[140, 100], [500, 100], [538, 372], [102, 372]], [[0, 128], [92, 156], [86, 366], [0, 396]], [[640, 128], [548, 156], [554, 366], [640, 396]]];
+const WIN0: Pt[] = [[140, 100], [500, 100], [538, 372], [102, 372]];
+/** The window and the two side panes. On a wide screen the panes carry on outward (to `e` px past the square) as more of the bridge's glass. */
+const windows = (e: number): Pt[][] => [WIN0, [[-e, 128], [0, 128], [92, 156], [86, 366], [0, 396], [-e, 396]], [[W + e, 128], [W, 128], [548, 156], [554, 366], [W, 396], [W + e, 396]]];
 
 /** Add a closed polygon to the current path. */
 function plg(ctx: CanvasRenderingContext2D, p: Pt[]): void {
@@ -44,7 +46,7 @@ function sparks(ctx: CanvasRenderingContext2D, x: number, y: number, n: number, 
 /** One side pane: the wing, sparking, tearing away (`tear` 0..1), and the dashed outline it leaves behind once gone. */
 function wingPane(d: Draw, side: number, tear: number, spark: number, t: number, dead: boolean): void {
   const ctx = d.ctx, rx = side < 0 ? 88 : 552, ry = 262;
-  ctx.save(); ctx.beginPath(); plg(ctx, WIN[side < 0 ? 1 : 2]); ctx.clip();
+  ctx.save(); ctx.beginPath(); plg(ctx, windows(d.ox + 20)[side < 0 ? 1 : 2]); ctx.clip();
   if (tear >= 1) {
     if (dead) {
       ctx.setLineDash([10, 8]); ctx.strokeStyle = `rgba(${PKs},${0.35 + 0.3 * Math.sin(t * 5)})`; ctx.lineWidth = 2.5;
@@ -88,7 +90,7 @@ function wingPane(d: Draw, side: number, tear: number, spark: number, t: number,
     }
   }
   ctx.restore();
-  if (spark > 0 && tear <= 0) { ctx.save(); ctx.beginPath(); plg(ctx, WIN[side < 0 ? 1 : 2]); ctx.clip(); sparks(ctx, rx, ry, Math.floor(6 + 26 * spark), t, side < 0 ? 3 : 8, 30 + 80 * spark); ctx.restore(); }
+  if (spark > 0 && tear <= 0) { ctx.save(); ctx.beginPath(); plg(ctx, windows(d.ox + 20)[side < 0 ? 1 : 2]); ctx.clip(); sparks(ctx, rx, ry, Math.floor(6 + 26 * spark), t, side < 0 ? 3 : 8, 30 + 80 * spark); ctx.restore(); }
 }
 
 /** The hyperspace tunnel seen through the front window. `amt` is how fast, `inst` how unstable (turns it pink and flickery). */
@@ -96,7 +98,7 @@ function tunnel(d: Draw, t: number, amt: number, inst: number): void {
   const ctx = d.ctx, cx = 320, cy = 235;
   const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 380);
   g.addColorStop(0, inst > 0.3 ? "rgba(90,10,60,.9)" : "rgba(10,60,110,.9)"); g.addColorStop(0.5, "rgba(4,10,30,.9)"); g.addColorStop(1, "#000");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, 480);
+  ctx.fillStyle = g; ctx.fillRect(-d.ox, 0, W + 2 * d.ox, 480);
   const col = inst > 0.3 ? PKs : CYs;
   for (let i = 0; i < 8; i++) {
     const p = (t * 0.55 * (0.6 + amt) + i / 8) % 1, rr = p * p * 460, wob = 0;
@@ -152,7 +154,8 @@ function bridge(d: Draw, T: number): void {
   if (inst > 0 && p > 0) p = clamp(p + Math.sin(T * 31) * 0.03 * inst, 0, 1);
   const alarm = ramp(T, s1, s1 + 0.4) * (1 - drop * 0.5) + (dead ? 0.6 : 0), pulse = 0.5 + 0.5 * Math.sin(T * 9), rim = alarm > 0.1 ? "255,70,90" : CYs;
   d.clockT = T; ctx.save(); ctx.translate(Math.sin(T * 61) * 7 * shake, Math.cos(T * 47) * 7 * shake);
-  ctx.fillStyle = "#000"; ctx.fillRect(-20, -20, 680, 680);
+  const E = d.ox + 20, vx = d.vx, WIN = windows(E);
+  ctx.fillStyle = "#000"; ctx.fillRect(-E, -20, W + 2 * E, 680);
   if (amt > 0.02) tunnel(d, T, amt, inst); else d.drawStars(T, 4, 0, 0.9);
   wingPane(d, -1, tear1, sp1, T, dead); wingPane(d, 1, tear2, sp2, T, dead);
   // the wings' wreckage tumbling away through the window
@@ -160,7 +163,7 @@ function bridge(d: Draw, T: number): void {
     const u = ramp(T, ev[0], ev[0] + 1.1);
     if (u <= 0 || u >= 1) return;
     const sr = srng(ev[1] + 31);
-    ctx.save(); ctx.beginPath(); plg(ctx, WIN[0]); ctx.clip();
+    ctx.save(); ctx.beginPath(); plg(ctx, WIN0); ctx.clip();
     for (let sj = 0; sj < 12; sj++) {
       const x0 = 320 + ev[1] * 190, ex = 320 + (sr() - 0.5) * 420, ey = 235 + (sr() - 0.4) * 260, e = ease(u);
       ctx.save(); ctx.translate(lerp(x0, ex, e), lerp(260, ey, e)); ctx.rotate(sr() * 6 + u * 9 * (sr() - 0.5)); ctx.globalAlpha = 1 - u * u;
@@ -176,18 +179,20 @@ function bridge(d: Draw, T: number): void {
     }
   }
   /* interior shell */
-  ctx.fillStyle = "#080d14"; ctx.beginPath(); ctx.rect(-20, -20, 680, 680); WIN.forEach((w) => plg(ctx, w)); ctx.fill("evenodd");
+  ctx.fillStyle = "#080d14"; ctx.beginPath(); ctx.rect(-E, -20, W + 2 * E, 680); WIN.forEach((w) => plg(ctx, w)); ctx.fill("evenodd");
   ctx.strokeStyle = `rgba(${rim},.22)`; ctx.lineWidth = 1.5; ctx.beginPath();
-  [[140, 100, 0, 0], [500, 100, 640, 0], [102, 372, 0, 500], [538, 372, 640, 500], [0, 60, 140, 100], [640, 60, 500, 100]].forEach((l) => { ctx.moveTo(l[0], l[1]); ctx.lineTo(l[2], l[3]); });
+  const kl = (102 + E) / 102, kr = (W + E - 538) / 102;
+  [[140, 100, 0, 0], [500, 100, 640, 0], [102, 372, 102 - kl * 102, 372 + kl * 128], [538, 372, 538 + kr * 102, 372 + kr * 128], [-E, 100 - ((140 + E) * 40) / 140, 140, 100], [W + E, 100 - ((W + E - 500) * 40) / 140, 500, 100]].forEach((l) => { ctx.moveTo(l[0], l[1]); ctx.lineTo(l[2], l[3]); });
   ctx.stroke();
   const strip = alarm > 0.1 ? 0.35 + 0.65 * pulse : 0.6;
   ctx.strokeStyle = `rgba(${rim},${strip * 0.8})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(20, 40); ctx.lineTo(150, 88); ctx.moveTo(620, 40); ctx.lineTo(490, 88); ctx.stroke();
   ctx.strokeStyle = `rgba(${rim},.55)`; ctx.lineWidth = 3; ctx.beginPath(); WIN.forEach((w) => plg(ctx, w)); ctx.stroke();
   const fl = Math.min(1, imp) * 7;
   [2, 1, 3, 0, 4].forEach((j) => officer(d, CREW[j], false, rim, T, fl, 0));
-  /* console */
-  ctx.fillStyle = "#0a1119"; ctx.beginPath(); plg(ctx, [[-20, 524], [150, 492], [490, 492], [660, 524], [660, 660], [-20, 660]]); ctx.fill();
-  ctx.strokeStyle = `rgba(${rim},.55)`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-20, 524); ctx.lineTo(150, 492); ctx.lineTo(490, 492); ctx.lineTo(660, 524); ctx.stroke();
+  /* console: its sloped front edge carries on at the same angle to each side */
+  const cy0 = 492 + ((150 + E) * 32) / 170;
+  ctx.fillStyle = "#0a1119"; ctx.beginPath(); plg(ctx, [[-E, cy0], [150, 492], [490, 492], [W + E, cy0], [W + E, 700], [-E, 700]]); ctx.fill();
+  ctx.strokeStyle = `rgba(${rim},.55)`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-E, cy0); ctx.lineTo(150, 492); ctx.lineTo(490, 492); ctx.lineTo(W + E, cy0); ctx.stroke();
   CREW.forEach((o, j) => {
     for (let m = 0; m < 5; m++) {
       const on = alarm > 0.1 ? Math.sin(T * (6 + j * 1.7) + m * 2.1) > -0.2 : Math.sin(T * (1.2 + j * 0.4) + m * 1.9) > 0.1;
@@ -195,7 +200,7 @@ function bridge(d: Draw, T: number): void {
       ctx.fillRect(o.x - 24 + m * 11, 498 + (o.s < 1 ? 2 : 0), 7, 4);
     }
   });
-  [[30, 150], [610, 150], [30, 300], [610, 300]].forEach((l, j) => {
+  [[30 - vx, 150], [610 + vx, 150], [30 - vx, 300], [610 + vx, 300]].forEach((l, j) => {
     ctx.fillStyle = alarm > 0.1 ? `rgba(255,50,60,${0.3 + 0.7 * Math.abs(Math.sin(T * 7 + j))})` : `rgba(${CYs},.35)`;
     ctx.beginPath(); ctx.arc(l[0], l[1], 5, 0, TAU); ctx.fill();
   });
@@ -209,8 +214,8 @@ function bridge(d: Draw, T: number): void {
     else { ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = 1; ctx.stroke(); }
   }
   const gone1 = T >= EV.w1, gone2 = T >= EV.w2;
-  wingIcon(d, 76, 566, 0.4, gone1 ? 0 : 0.85, gone1, -0.15); wingIcon(d, 564, 566, 0.4, gone2 ? 0 : 0.85, gone2, 0.15);
-  d.text("WING 1", 76, 604, 12, `rgb(${gone1 ? PKs : CYs})`, 700, 4, "center"); d.text("WING 2", 564, 604, 12, `rgb(${gone2 ? PKs : CYs})`, 700, 4, "center");
+  wingIcon(d, 76 - vx, 566, 0.4, gone1 ? 0 : 0.85, gone1, -0.15); wingIcon(d, 564 + vx, 566, 0.4, gone2 ? 0 : 0.85, gone2, 0.15);
+  d.text("WING 1", 76 - vx, 604, 12, `rgb(${gone1 ? PKs : CYs})`, 700, 4, "center"); d.text("WING 2", 564 + vx, 604, 12, `rgb(${gone2 ? PKs : CYs})`, 700, 4, "center");
   ctx.restore();
   /* banners and flashes */
   const bl = Math.floor(T * 5) % 2 ? 0.45 : 1;
@@ -227,18 +232,18 @@ function bridge(d: Draw, T: number): void {
   }
   if (alarm > 0.05 && !dead) {
     const g = ctx.createRadialGradient(320, 320, 150, 320, 320, 470);
-    g.addColorStop(0, "rgba(255,40,60,0)"); g.addColorStop(1, `rgba(255,40,60,${0.2 * alarm + 0.5 * alarm * pulse})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, W);
+    g.addColorStop(0, "rgba(255,40,60,0)"); g.addColorStop(1, `rgba(255,40,60,${0.2 * alarm + 0.5 * alarm * pulse})`); ctx.fillStyle = g; ctx.fillRect(-d.ox, 0, W + 2 * d.ox, W);
     ctx.save(); ctx.globalCompositeOperation = "lighter"; const an = T * 5;
     const bg = ctx.createRadialGradient(320, 60, 0, 320 + Math.cos(an) * 300, 60 + Math.abs(Math.sin(an)) * 320, 340);
-    bg.addColorStop(0, `rgba(255,50,60,${0.35 * alarm})`); bg.addColorStop(1, "rgba(255,50,60,0)"); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, 500); ctx.restore();
+    bg.addColorStop(0, `rgba(255,50,60,${0.35 * alarm})`); bg.addColorStop(1, "rgba(255,50,60,0)"); ctx.fillStyle = bg; ctx.fillRect(-d.ox, 0, W + 2 * d.ox, 500); ctx.restore();
   }
-  if (inst > 0.3 && !dead) { const fr = srng(Math.floor(T * 20)); if (fr() < 0.22 * inst) { ctx.fillStyle = `rgba(0,0,0,${0.35 + fr() * 0.35})`; ctx.fillRect(0, 0, W, W); } }
-  [EV.w1, EV.w2].forEach((e) => { if (T >= e && T < e + 0.45) { ctx.fillStyle = `rgba(255,190,90,${0.7 * (1 - (T - e) / 0.45)})`; ctx.fillRect(0, 0, W, W); } });
-  if (T >= EV.drop && T < EV.drop + 0.9) { ctx.fillStyle = `rgba(255,255,255,${0.95 * (1 - ramp(T, EV.drop, EV.drop + 0.9))})`; ctx.fillRect(0, 0, W, W); }
+  if (inst > 0.3 && !dead) { const fr = srng(Math.floor(T * 20)); if (fr() < 0.22 * inst) { ctx.fillStyle = `rgba(0,0,0,${0.35 + fr() * 0.35})`; ctx.fillRect(-d.ox, 0, W + 2 * d.ox, W); } }
+  [EV.w1, EV.w2].forEach((e) => { if (T >= e && T < e + 0.45) { ctx.fillStyle = `rgba(255,190,90,${0.7 * (1 - (T - e) / 0.45)})`; ctx.fillRect(-d.ox, 0, W + 2 * d.ox, W); } });
+  if (T >= EV.drop && T < EV.drop + 0.9) { ctx.fillStyle = `rgba(255,255,255,${0.95 * (1 - ramp(T, EV.drop, EV.drop + 0.9))})`; ctx.fillRect(-d.ox, 0, W + 2 * d.ox, W); }
   if (dead) {
-    ctx.fillStyle = "rgba(0,0,0,.4)"; ctx.fillRect(0, 0, W, W);
+    ctx.fillStyle = "rgba(0,0,0,.4)"; ctx.fillRect(-d.ox, 0, W + 2 * d.ox, W);
     const ep = 0.5 + 0.5 * Math.sin(T * 3), g2 = ctx.createRadialGradient(320, 320, 160, 320, 320, 460);
-    g2.addColorStop(0, "rgba(255,40,60,0)"); g2.addColorStop(1, `rgba(255,40,60,${0.12 + 0.3 * ep})`); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, W);
+    g2.addColorStop(0, "rgba(255,40,60,0)"); g2.addColorStop(1, `rgba(255,40,60,${0.12 + 0.3 * ep})`); ctx.fillStyle = g2; ctx.fillRect(-d.ox, 0, W + 2 * d.ox, W);
   }
 }
 
@@ -250,10 +255,10 @@ function hazardRoute(d: Draw, t: number, x0: number, y0: number, x1: number, y1:
   const ctx = d.ctx, r = srng(seed || 23);
   for (let i = 0; i < 16; i++) {
     const u = r();
-    let px = lerp(x0, x1, u) + (r() - 0.5) * 360;
+    let px = lerp(x0, x1, u) + (r() - 0.5) * 360 * (1 + d.vx / 320); // wider on a wide screen
     const py = lerp(y0, y1, u) + (r() - 0.5) * 60;
     if (Math.abs(px - lerp(x0, x1, u) - Math.sin(u * 9) * 60) < 50) px += 110;
-    ctx.save(); ctx.globalAlpha *= 0.75; d.drawRock(clamp(px, 40, 600), py, 14 + r() * 22, r() * 6 + t * 0.1, PINK, false, false, false); ctx.restore();
+    ctx.save(); ctx.globalAlpha *= 0.75; d.drawRock(clamp(px, 40 - d.vx, 600 + d.vx), py, 14 + r() * 22, r() * 6 + t * 0.1, PINK, false, false, false); ctx.restore();
   }
   ctx.save(); ctx.strokeStyle = `rgba(${CYs},.7)`; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.lineDashOffset = -t * 30; ctx.beginPath();
   for (let k = 0; k <= 30 * p; k++) { const f = k / 30, x = lerp(x0, x1, f) + Math.sin(f * 9) * 60, y = lerp(y0, y1, f); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
@@ -305,7 +310,7 @@ export function drawStory(d: Draw, t: number): void {
  */
 export function drawIntro(d: Draw, game: Game, drawPlayfield: (d: Draw, game: Game) => void): void {
   const ctx = d.ctx, t = game.intro.t;
-  if (game.intro.game) drawPlayfield(d, game); else { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, W); }
+  if (game.intro.game) drawPlayfield(d, game); else { ctx.fillStyle = "#000"; ctx.fillRect(-d.ox, 0, W + 2 * d.ox, W); }
   const warp = ramp(t, JUMP_AT, 14.4 + SH) * (1 - ramp(t, 14.4 + SH, 15.6 + SH)), calm = 1 - warp, fade = 1 - ramp(t, 14.2 + SH, 14.8 + SH);
   ctx.save(); ctx.globalAlpha = fade;
   if (t < COUNT_AT) drawStory(d, t);
@@ -358,7 +363,7 @@ export function drawIntro(d: Draw, game: Game, drawPlayfield: (d: Draw, game: Ga
     }
   });
   if (game.storyBtnVisible()) { // a way out of the story, always on screen while it runs
-    const a = ramp(t, 0.9, 1.5) * (1 - ramp(t, COUNT_AT - 2.6, COUNT_AT - 1.6)), b = SKIPS, pt = game.input.pointer, hov = inBox(b, pt.x, pt.y);
+    const a = ramp(t, 0.9, 1.5) * (1 - ramp(t, COUNT_AT - 2.6, COUNT_AT - 1.6)), b = game.skipBox(), pt = game.input.pointer, hov = inBox(b, pt.x, pt.y);
     ctx.save(); ctx.globalAlpha *= a;
     d.fillPoly(d.cutPlate(b.x, b.y, b.x + b.w, b.y + b.h, 9), hov ? "rgba(0,229,255,.22)" : "rgba(0,0,0,.55)", css(CYAN, hov ? 1 : 0.7), 1.5);
     d.text("SKIP STORY", b.x + 66, b.y + 20, 13, hov ? "#fff" : CYAN, 700, 3, "center");
