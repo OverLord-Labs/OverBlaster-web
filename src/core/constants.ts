@@ -38,7 +38,12 @@ export const CRYSTAL_GRAVITY = 4.5; // degrees: aim this close to a crystal and 
 export const CRYSTAL_PULL = 14; // degrees a second it flies at, speeding up
 export const HIT_FORGIVENESS = 2.0; // a shot lands within 2 x a rock's radius...
 export const HIT_MIN = 3.5; // ...and never closer than this, so even a far, small rock is easy to hit (degrees)
-export const SPAWN_SPREAD = 45;
+/** Rocks come from all round you now, so there is longer to turn: every rock takes this many times its planned approach time to land. */
+export const APPROACH_SCALE = 1.7;
+/** How far above and below the horizon rocks appear, in degrees. */
+export const SPAWN_EL = 22;
+/** Rocks drift up and down only this far. */
+export const ROCK_EL_LIMIT = 26;
 export const POINTER_RING = 250; // px: how far from the centre an off-screen arrow sits
 export const CRITICAL = 0.72; // a rock past 72% of its way to you is critically close
 export const BLINK_FROM = 0.8; // a rock this close starts blinking red itself

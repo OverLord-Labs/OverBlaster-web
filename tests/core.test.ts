@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CHIP_CAPACITY, CHIP_HOLD, COUNT_AT, Game, GAME_AT, INTRO_END, LEVELS, MAX_LEVEL, Rng, WING_HOLD, azd, emptyInput, levelPlan, levelSay, simulateLevel,
+  CHIP_CAPACITY, CHIP_HOLD, COUNT_AT, Game, GAME_AT, INTRO_END, LEVELS, MAX_LEVEL, Rng, WING_HOLD, azd, emptyInput, levelPlan, levelSay, ringSpots, simulateLevel,
 } from "../src/core";
 import type { GameEvent, InputFrame } from "../src/core";
 
@@ -56,6 +56,55 @@ describe("battery", () => {
     const g = play(); g.run.charge = 0; g.run.crystals = [];
     step(g, 3);
     expect(g.run.lostCause).toBe("battery");
+  });
+});
+
+describe("rocks come from all round you", () => {
+  const gaps = (azs: number[]): number => { const a = [...azs].sort((x, y) => x - y); return Math.max(...a.map((v, i) => (i + 1 < a.length ? a[i + 1] - v : a[0] + 360 - v))); };
+  it("ring spots: neighbours in time are far apart and a dozen cover the circle", () => {
+    const next = ringSpots(new Rng(3)), s = Array.from({ length: 12 }, () => next());
+    for (let i = 1; i < s.length; i++) expect(Math.abs(azd(s[i], s[i - 1]))).toBeGreaterThan(90);
+    expect(gaps(s.map((v) => (v + 360) % 360))).toBeLessThan(90);
+  });
+  it("levels 1 to 3 and the BMS level put rocks all the way round", () => {
+    for (const n of [1, 2, 3, 12]) {
+      const g = play(n); g.startLevel(n);
+      expect(gaps(g.run.worlds.map((w) => w.az))).toBeLessThan(140);
+    }
+  });
+  it("a level from 4 on has lumps that cover most of the circle", () => {
+    expect(gaps(levelPlan(10, new Rng(2)).map((r) => (r.az + 360) % 360))).toBeLessThan(120);
+  });
+});
+
+describe("retry and start over", () => {
+  const lose = (g: Game): void => { g.run.t = 5; g.run.worlds[0].spawnAt = 0; g.run.worlds[0].p = 0.99; g.run.worlds[0].speed = 1; step(g, 3); };
+  it("retry level restores the score and wings from when the level began, with at least half a battery", () => {
+    const g = play(); g.run.score = 700; g.run.wings = 1; g.startLevel(3); g.run.score = 900; g.run.charge = 30; lose(g);
+    expect(g.phase).toBe("over");
+    g.retryLevel();
+    expect(g.phase).toBe("play"); expect(g.run.level).toBe(3); expect(g.run.mode).toBe("playing"); expect(g.run.lostCause).toBeNull();
+    expect(g.run.score).toBe(700); expect(g.run.wings).toBe(1); expect(g.run.charge).toBeGreaterThanOrEqual(g.run.capacity * 0.5);
+    expect(g.run.worlds.length).toBeGreaterThan(0);
+  });
+  it("start over goes back to level 1 with no score", () => {
+    const g = play(); g.startLevel(3); g.run.score = 900; lose(g);
+    g.startOver();
+    expect(g.phase).toBe("play"); expect(g.run.level).toBe(1); expect(g.run.score).toBe(0);
+  });
+  it("the buttons do each, and Enter retries the level", () => {
+    let g = play(); g.startLevel(2); lose(g);
+    step(g, DT, { presses: [{ x: 320, y: 332 }] }); // RETRY LEVEL
+    expect(g.phase).toBe("play"); expect(g.run.level).toBe(2);
+    g = play(); g.startLevel(2); lose(g);
+    step(g, DT, { presses: [{ x: 320, y: 410 }] }); // START OVER
+    expect(g.phase).toBe("play"); expect(g.run.level).toBe(1);
+    g = play(); g.startLevel(2); lose(g);
+    step(g, DT, { presses: [{ x: 320, y: 486 }] }); // TITLE
+    expect(g.phase).toBe("title");
+    g = play(); g.startLevel(2); lose(g);
+    step(g, DT, { commands: ["launch"] }); // Enter
+    expect(g.phase).toBe("play"); expect(g.run.level).toBe(2);
   });
 });
 

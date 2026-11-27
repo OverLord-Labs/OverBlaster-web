@@ -1,10 +1,20 @@
-import { BAD, GAUGE_LEVEL, LEVELS, LOADS, WING_LEVELS } from "./constants";
+import { BAD, GAUGE_LEVEL, LEVELS, LOADS, SPAWN_EL, WING_LEVELS } from "./constants";
 import { clamp, lerp } from "./math";
 import type { Rng } from "./rng";
 import type { BadColor } from "./constants";
 
 /** One rock in a level's plan. `t` is when it appears, `appr` how many seconds it takes to reach you. */
 export interface PlanRock { t: number; az: number; el: number; hp: number; appr: number; eject?: BadColor }
+
+/**
+ * Where the next rock (or lump of rocks) goes, as degrees to the right of where you look, anywhere on the full circle.
+ * Each step is about 137.5 degrees (the golden angle) plus a little jitter, so rocks that arrive one after another are far
+ * apart, and over a level they cover the whole 360.
+ */
+export function ringSpots(rng: Rng): () => number {
+  let a = rng.next() * 360;
+  return () => { a = (a + 137.508) % 360; return ((a + rng.signed() * 14 + 540) % 360) - 180; };
+}
 
 export const levelName = (n: number): string => LEVELS[clamp(n, 1, LEVELS.length) - 1];
 
@@ -45,16 +55,15 @@ export function levelPlan(n: number, rng: Rng, loads: [number, number] = LOADS):
   const load = lerp(loads[0], loads[1], u);
   const hp = n <= 6 ? [3, 3, 4][n - 4] : n === GAUGE_LEVEL ? 3 : clamp(Math.round(3 + (n - 8) * 0.1), 3, 6);
   const appr = n <= 6 ? [24, 22, 20][n - 4] : Math.max(12, 28 * Math.pow(0.98, n - 4));
-  const spread = n <= 7 ? 40 : Math.min(70, 45 + 1.5 * (n - 8));
   const span = 20 + 0.4 * (n - 4);
-  let tt = 1.0;
+  let tt = 1.0, pinA = 0;
   const frac = n < GAUGE_LEVEL ? 0 : Math.min(0.45, 0.06 + 0.012 * (n - GAUGE_LEVEL)) + (kind === "gauge" || kind === "boss" ? 0.15 : 0);
-  const side = () => rng.signed() * spread;
+  const side = ringSpots(rng);
   const lump = (t: number, size: number, az: number, h: number, ap: number) => {
-    for (let k = 0; k < size; k++) plan.push({ t: t + rng.next() * 0.2, az: az + rng.signed() * 4.5, el: clamp(rng.signed() * 3 + ((az * 7) % 11) - 5, -18, 18), hp: h, appr: ap });
+    for (let k = 0; k < size; k++) plan.push({ t: t + rng.next() * 0.2, az: az + rng.signed() * 4.5, el: clamp(rng.signed() * 3 + ((az * 7) % 11) - 5, -SPAWN_EL, SPAWN_EL), hp: h, appr: ap });
   };
   if (kind === "intro") {
-    for (let i = 0; i < 6; i++) plan.push({ t: tt + i * 3.2, az: side(), el: rng.signed() * 10, hp, appr });
+    for (let i = 0; i < 6; i++) plan.push({ t: tt + i * 3.2, az: side(), el: rng.signed() * 12, hp, appr });
     plan[1].eject = "red"; plan[4].eject = "blue";
     return plan;
   }
@@ -64,19 +73,20 @@ export function levelPlan(n: number, rng: Rng, loads: [number, number] = LOADS):
     const ap = kind === "boss" ? appr * 0.9 : appr;
     const nL = n <= 6 ? [4, 5, 6][n - 4] : Math.round((span * 10 * load) / (size * h));
     for (let i = 0; i < nL; i++) {
-      lump(tt, size, kind === "pincer" ? (i % 2 ? 1 : -1) * Math.min(85, 45 + spread * 0.5) * (0.8 + 0.2 * rng.next()) : side(), h, ap);
+      if (kind === "pincer") { if (i % 2 === 0) pinA = side(); } // a pincer: two lumps on opposite sides of you
+      lump(tt, size, kind === "pincer" ? (i % 2 ? pinA + 180 + rng.signed() * 12 : pinA) : side(), h, ap);
       tt += ((size * h) / (10 * load)) * (n <= 6 ? 1.3 : kind === "pincer" ? 1.35 : 1);
     }
   } else if (kind === "swarm") {
     const h2 = Math.max(1, Math.round(hp * 0.5)), cnt = Math.round(((span * 10 * load) / h2) * 0.6);
     for (let i = 0; i < cnt; i++) {
-      plan.push({ t: tt, az: side(), el: rng.signed() * 16, hp: h2, appr: appr * 0.85 });
+      plan.push({ t: tt, az: side(), el: rng.signed() * SPAWN_EL, hp: h2, appr: appr * 0.85 });
       tt += (h2 / (10 * load)) * (0.7 + 0.6 * rng.next());
     }
   } else {
     const cnt = Math.round((span * 10 * load) / hp);
     for (let i = 0; i < cnt; i++) {
-      plan.push({ t: tt, az: side(), el: rng.signed() * 16, hp, appr });
+      plan.push({ t: tt, az: side(), el: rng.signed() * SPAWN_EL, hp, appr });
       tt += (hp / (10 * load)) * (0.75 + 0.5 * rng.next());
     }
   }

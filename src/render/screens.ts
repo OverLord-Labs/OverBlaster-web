@@ -1,6 +1,6 @@
 import { CYAN, GOLD, PINK, W } from "../core/constants";
 import type { Game } from "../core/game";
-import { LAUNCH, RETRY, TOTITLE, inBox } from "../core/layout";
+import { LAUNCH, inBox, overButtons } from "../core/layout";
 import { ramp } from "../core/math";
 import { css, Draw } from "./draw";
 
@@ -44,10 +44,10 @@ export function drawOver(d: Draw, game: Game): void {
   d.text(won ? "Both wings are home. The Meridian can jump again." : hull ? "A rock reached your ship." : "You ran out of energy.", 320, 190, 22, "#fff", 500, 1, "center");
   d.text(`SCORE ${g.score.toLocaleString("en-US")}    LEVEL ${g.level}`, 320, 252, 28, CYAN, 700, 2, "center");
   if (won) d.logo(320, 296, 56);
-  for (const [r, label] of [[RETRY, "RETRY"], [TOTITLE, "TITLE"]] as const) {
+  for (const { box: r, label } of overButtons(won)) {
     const hov = inBox(r, ptr.x, ptr.y);
     d.fillPoly(d.cutPlate(r.x, r.y, r.x + r.w, r.y + r.h, 12), hov ? "rgba(0,229,255,.18)" : "rgba(0,229,255,.06)", css(CYAN, 0.9), 2);
-    d.text(label, 320, r.y + 42, 26, CYAN, 700, 4, "center");
+    d.text(label, 320, r.y + 42, 26, CYAN, 700, 3, "center");
   }
   ctx.restore();
   if (ptr.inside) d.crosshair(ptr.x, ptr.y);

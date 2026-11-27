@@ -40,6 +40,11 @@ export type RunMode = "playing" | "intermission" | "lost";
 export type LostCause = "hull" | "battery" | "win" | null;
 
 /** One game, from level 1 to the end. */
+export interface Checkpoint {
+  score: number; charge: number; capacity: number; chipCollected: boolean; wings: number;
+  bad: BadState | null; badCount: number; killsBad: number; gaugeSeen: boolean;
+}
+
 export interface Run {
   level: number; score: number; charge: number; capacity: number;
   chipCollected: boolean;
@@ -57,6 +62,8 @@ export interface Run {
   chipSeen: boolean; tickK: number;
   bad: BadState | null; badCount: number; killsBad: number; gaugeSeen: boolean; badT0: number;
   callout: Callout | null;
+  /** The state at the start of this level, which a retry restores. */
+  checkpoint: Checkpoint | null;
   wings: number; wingSpawned: boolean;
   stingy: boolean; wave2: { count: number; gap: number; hp: number; approach: number } | null;
   pendingSay: { at: number; keys: string[] } | null;

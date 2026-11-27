@@ -1,15 +1,15 @@
 import {
   ACK_MIN, BAD, MAX_ASPECT, BADGE_AT, CELLS, CHIP_CAPACITY, CHIP_DRAIN, CHIP_HOLD, CHIP_LEVEL, CENTER, COUNT_S, CRITICAL, CRYSTAL_DELAY, CRYSTAL_GRAVITY, CRYSTAL_PULL, CRYSTAL_RADIUS, CRYSTAL_VALUE,
   EL_LIMIT, FIRST_HOLD, GAUGE_HOLD, GAUGE_LEVEL, GAUGE_LIFE, GAUGE_RADIUS, GAUGE_SPACING, GOLD, HARVEST, HIT_FORGIVENESS, HIT_MIN, LOADS, LOW, MAX_LEVEL, PINK,
-  PPD, RESTORE_AFTER, RESTORE_ODDS, SETTLE, SHOT_COOLDOWN, SHOT_COST, SPAWN_SPREAD, START_CHARGE, W, WING_HOLD, WING_LEVELS, WING_RADIUS,
+  PPD, RESTORE_AFTER, RESTORE_ODDS, SETTLE, SHOT_COOLDOWN, SHOT_COST, APPROACH_SCALE, ROCK_EL_LIMIT, SPAWN_EL, START_CHARGE, W, WING_HOLD, WING_LEVELS, WING_RADIUS,
 } from "./constants";
 import type { BadColor } from "./constants";
 import type { GameEvent, Phase } from "./events";
 import { emptyInput } from "./input";
 import type { InputFrame } from "./input";
 import { COUNT_AT, GAME_AT, INTRO_CUES, INTRO_END, RISER_AT, SKIP_STORY_TO, introOpen } from "./intro";
-import { LAUNCH, RETRY, TOTITLE, inBox, skipsBox } from "./layout";
-import { crystalsFor, gaugeChase, levelPlan, levelSay } from "./levels";
+import { LAUNCH, inBox, overButtons, skipsBox } from "./layout";
+import { crystalsFor, gaugeChase, levelPlan, levelSay, ringSpots } from "./levels";
 import { azd, clamp, ramp, wrap360 } from "./math";
 import { Rng } from "./rng";
 import type { Callout, Gauge, IntroState, Pickup, Rock, Run } from "./types";
@@ -121,6 +121,24 @@ export class Game {
     this.setPhase("play");
     this.emit({ type: "music", name: "game" });
   }
+  /** From the game-over screen: begin again at level 1. */
+  startOver(): void {
+    if (this.phase !== "over") return;
+    this.over = null; this.newGame(false); this.setPhase("play"); this.emit({ type: "music", name: "game" });
+  }
+  /** From the game-over screen: play the level you lost again, with the score, wings and BMS you had when it began. The battery is at least half full, so a retry is fair. */
+  retryLevel(): void {
+    const g = this.run, c = g.checkpoint;
+    if (this.phase !== "over" || !c || g.lostCause === "win") return;
+    Object.assign(g, {
+      score: c.score, capacity: c.capacity, charge: Math.max(c.charge, c.capacity * 0.5), chipCollected: c.chipCollected, wings: c.wings,
+      bad: c.bad ? { ...c.bad } : null, badCount: c.badCount, killsBad: c.killsBad, gaugeSeen: c.gaugeSeen,
+      mode: "playing", lostCause: null, lostT: 0, shake: 0, flash: 0, lastHit: -9, hitAt: null, fx: [], floaters: [], bolts: [], gauges: [],
+      awardT0: null, awardOrigin: null, awardKind: null, callout: null, lowFired: false, chip: null, chipSeen: false, tutorial: false, badT0: -9, lastWarn: -9, warns: 0,
+    });
+    this.over = null; this.setPhase("play"); this.emit({ type: "music", name: "game" });
+    this.startLevel(g.level);
+  }
   toTitle(): void {
     this.setPhase("title");
     this.emit({ type: "music", name: null });
@@ -137,7 +155,7 @@ export class Game {
       awardT0: null, awardOrigin: null, awardKind: null, lowFired: false, tutorial: true, tutT0: 0,
       shake: 0, lostT: 0, lostCause: null, chipSeen: false, tickK: 0,
       bad: null, badCount: 0, killsBad: 0, gaugeSeen: false, badT0: -9, callout: null,
-      wings: 0, wingSpawned: false, stingy: false, wave2: null, pendingSay: null, lastWarn: -9, warns: 0,
+      checkpoint: null, wings: 0, wingSpawned: false, stingy: false, wave2: null, pendingSay: null, lastWarn: -9, warns: 0,
     };
     this.startLevel(1, fromIntro);
   }
@@ -146,13 +164,14 @@ export class Game {
     const r = this.rng;
     return {
       az: o.az, el: o.el, azv: (r.next() - 0.5) * 0.9, elv: (r.next() - 0.5) * 0.4, p: o.p || 0,
-      spawnAt: o.hold ? 9999 : o.spawnAt, hold: !!o.hold, speed: 1 / o.approach, hp: o.hp, max: o.hp, carrier: !!o.carrier,
+      spawnAt: o.hold ? 9999 : o.spawnAt, hold: !!o.hold, speed: 1 / (o.approach * APPROACH_SCALE), hp: o.hp, max: o.hp, carrier: !!o.carrier,
       rot: r.next() * 6, spin: (r.next() - 0.5) * 0.6, dead: false, hurt: 0, arrive: o.arrive, eject: o.eject || null,
     };
   }
 
   startLevel(n: number, fromIntro = false): void {
     const g = this.run, r = this.rng, V = this.view;
+    g.checkpoint = { score: g.score, charge: g.charge, capacity: g.capacity, chipCollected: g.chipCollected, wings: g.wings, bad: g.bad ? { ...g.bad } : null, badCount: g.badCount, killsBad: g.killsBad, gaugeSeen: g.gaugeSeen }; // what a retry goes back to
     g.level = n; g.mode = "playing"; g.t = 0; g.crystals = []; g.chip = null; g.wing = null; g.wingSpawned = false; g.plateVoiced = 0;
     g.splashAz = V.az; g.splashEl = V.el + 6.3; g.tutT0 = this.clock; g.pendingSay = null; g.wave2 = null; g.stingy = false; g.gauges = [];
     const approach = 34 / (1 + 0.12 * (n - 1)), carrier = n >= CHIP_LEVEL && !g.chipCollected, entry = fromIntro ? ENTRY_SPOTS.length : 0;
@@ -162,18 +181,19 @@ export class Game {
       g.stingy = true; g.wave2 = { count: 10, gap: 0.9, hp: 6, approach: 30 };
       const CARRIER_AT = 7;
       const cl: { az: number; el: number }[] = [];
-      for (let c = 0; c < 5; c++) cl.push({ az: V.az + r.signed() * 11, el: r.signed() * 8 }); // five tight clusters of three, each arriving as one lump
+      const spot = ringSpots(r);
+      for (let c = 0; c < 5; c++) cl.push({ az: V.az + spot(), el: r.signed() * 12 }); // five tight clusters of three, each arriving as one lump, from all round you
       for (let i = 0; i < 15; i++) {
         const ce = cl[Math.floor(i / 3)];
-        g.worlds.push(this.makeWorld({ az: wrap360(ce.az + r.signed() * 5), el: clamp(ce.el + r.signed() * 4, -18, 18), p: 0.08 + r.next() * 0.22, spawnAt: 1.0 + Math.floor(i / 3) * 2.4, approach: 42, hp: 7, carrier: i === CARRIER_AT, hold: i === CARRIER_AT }));
+        g.worlds.push(this.makeWorld({ az: wrap360(ce.az + r.signed() * 5), el: clamp(ce.el + r.signed() * 4, -SPAWN_EL, SPAWN_EL), p: 0.08 + r.next() * 0.22, spawnAt: 1.0 + Math.floor(i / 3) * 2.4, approach: 42, hp: 7, carrier: i === CARRIER_AT, hold: i === CARRIER_AT }));
       }
     } else if (n >= 4) {
       for (const p of levelPlan(n, r, this.loads)) g.worlds.push(this.makeWorld({ az: wrap360(V.az + p.az), el: p.el, spawnAt: p.t, approach: p.appr, hp: p.hp, eject: p.eject }));
     } else {
-      const count = 4 + 2 * n, gap = Math.max(1.4, 2.8 - 0.15 * n), hp = 4 + n;
+      const count = 4 + 2 * n, gap = Math.max(1.4, 2.8 - 0.15 * n), hp = 4 + n, spot = ringSpots(r);
       for (let j = 0; j < count; j++) {
         const isC = carrier && j === 0;
-        const w = this.makeWorld({ az: wrap360(V.az + r.signed() * SPAWN_SPREAD), el: r.signed() * 16, spawnAt: 1.0 + j * gap, approach, hp: isC ? hp + 4 : hp, carrier: isC });
+        const w = this.makeWorld({ az: wrap360(V.az + spot()), el: r.signed() * SPAWN_EL, spawnAt: 1.0 + j * gap, approach, hp: isC ? hp + 4 : hp, carrier: isC });
         if (j < entry) { w.az = wrap360(V.az + ENTRY_SPOTS[j][0]); w.el = ENTRY_SPOTS[j][1]; w.azv = w.elv = 0; w.p = 0.42 + 0.04 * j; w.spawnAt = -9; w.arrive = { t0: this.clock, delay: j * 0.16, dur: 1.5 }; }
         else if (entry) w.spawnAt = 4.0 + (j - entry) * gap;
         g.worlds.push(w);
@@ -279,7 +299,8 @@ export class Game {
     this.emit({ type: "chipFound" });
     if (g.wave2) {
       const w2 = g.wave2; g.wave2 = null;
-      for (let i = 0; i < w2.count; i++) g.worlds.push(this.makeWorld({ az: wrap360(this.view.az + this.rng.signed() * 30), el: this.rng.signed() * 14, spawnAt: g.t + 5.5 + i * w2.gap, approach: w2.approach, hp: w2.hp }));
+      const spot = ringSpots(this.rng);
+      for (let i = 0; i < w2.count; i++) g.worlds.push(this.makeWorld({ az: wrap360(this.view.az + spot()), el: this.rng.signed() * SPAWN_EL, spawnAt: g.t + 5.5 + i * w2.gap, approach: w2.approach, hp: w2.hp }));
     }
   }
 
@@ -289,15 +310,18 @@ export class Game {
     if (this.phase === "title") { this.launch(); return; }
     if (this.phase === "play" && this.run.mode === "intermission") { if (this.clock - this.run.plateAt >= ACK_MIN) this.acknowledge(); return; }
     if (this.phase === "over") {
-      if (inBox(RETRY, x, y)) this.command("launch");
-      else if (inBox(TOTITLE, x, y)) this.toTitle();
+      for (const b of overButtons(this.run.lostCause === "win")) {
+        if (!inBox(b.box, x, y)) continue;
+        if (b.act === "retryLevel") this.retryLevel(); else if (b.act === "startOver") this.startOver(); else this.toTitle();
+        break;
+      }
     }
   }
   private command(c: InputFrame["commands"][number]): void {
     if (c === "launch") { // the confirm key (Enter, or Select on glasses): launch, continue past a plate, or retry
       if (this.phase === "title") this.launch();
       else if (this.phase === "play" && this.run.mode === "intermission") { if (this.clock - this.run.plateAt >= ACK_MIN) this.acknowledge(); }
-      else if (this.phase === "over") { this.newGame(false); this.setPhase("play"); this.emit({ type: "music", name: "game" }); }
+      else if (this.phase === "over") { if (this.run.lostCause === "win") this.startOver(); else this.retryLevel(); }
     }
     else if (c === "skipStory") this.skipStory();
     else if (c === "skipIntro") this.skipIntro();
@@ -370,7 +394,7 @@ export class Game {
     }
     for (const w of g.worlds) {
       if (w.dead || g.t < w.spawnAt) continue;
-      w.p += w.speed * dt; w.rot += w.spin * dt; w.az = wrap360(w.az + w.azv * dt); w.el = clamp(w.el + w.elv * dt, -22, 22); w.hurt = Math.max(0, w.hurt - dt);
+      w.p += w.speed * dt; w.rot += w.spin * dt; w.az = wrap360(w.az + w.azv * dt); w.el = clamp(w.el + w.elv * dt, -ROCK_EL_LIMIT, ROCK_EL_LIMIT); w.hurt = Math.max(0, w.hurt - dt);
       if (w.p >= 1) this.loseGame("hull");
     }
     if ((g.mode as string) === "lost") return;
