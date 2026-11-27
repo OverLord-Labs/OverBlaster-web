@@ -28,6 +28,7 @@ const ob = OverBlaster.mount(element, options);   // element: a container (a can
 | `skipIntro` | `false` | go straight to level 1 on launch |
 | `keyboard` | `"focus"` | `"focus"`: keys only while the game is focused (click it); `"window"`: anywhere; `"off"` |
 | `motion` | `true` | phone orientation steers the view |
+| `skipButton` | `false` | draw a clickable "skip story" button during the intro (always shown for `controls: "mic"`; the glasses modes have no pointer, so they leave it off). It sits in the top-right corner of what is visible |
 | `soundButton` | `true` | the speaker icon in the top-left corner of the game (hidden when `sound` is `false`); `M` also toggles |
 | `controls` | `"mic"` | how the player fires, which picks the on-screen hints: `"mic"` (say "pew", click or Space), `"select"` (one Select / Enter press, for glasses with no microphone) or `"voice"` (glasses with a microphone: say "pew" to fire and continue; no key or mouse hints). Enter always fires and confirms |
 | `onMuteChange` | none | `(muted: boolean) => void`, called whenever sound is switched on or off |
